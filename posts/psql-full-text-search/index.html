@@ -84,8 +84,14 @@ Psql Full Text Search | kcindric
 <h2 id="full-text-search-using-like-and-ilike-operators">Full Text Search using <code>LIKE</code> and <code>ILIKE</code> operators</h2>
 <p>Let&rsquo;s say we have a movie called &ldquo;Darkness War&rdquo; and we want to search it. The first, most easiest, and the least optimized way would be using the <code>LIKE</code> operator and wrapping individual words in <code>%</code> characters:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">where</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%darkness%&#39;</span> <span style="color:#66d9ef">or</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%war%&#39;</span>
-</span></span></code></pre></div><p>The result:</p>
-<p><img src="sql-results-1.png" alt="sql results 1"></p>
+</span></span></code></pre></div><p>The result:
+
+
+<p align="center">
+  <img src="images/sql-results-1.png" width="300"/>
+</p>
+<p style="text-align: center;">11 rows, 300 msec</p>
+</p>
 
     </div>
 </div>
