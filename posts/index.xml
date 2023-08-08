@@ -1,22 +1,130 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>Posts on kcindric homepage</title>
-    <link>https://www.kcindric.me/posts/</link>
-    <description>Recent content in Posts on kcindric homepage</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Sun, 06 Aug 2023 12:59:46 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/posts/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>PostgreSQL Full Text Search</title>
-      <link>https://www.kcindric.me/posts/psql-full-text-search/</link>
-      <pubDate>Sun, 06 Aug 2023 12:59:46 +0200</pubDate>
-      
-      <guid>https://www.kcindric.me/posts/psql-full-text-search/</guid>
-      <description>Let&amp;rsquo;s say we are building an app for searching movies in our private collection. Our app, for simplicity, can only search movies using movie titles. In the following examples we&amp;rsquo;ll show a few different approaches how to do a full text search using PostgreSQL.
+    <channel>
+        <title>Posts on kcindric</title>
+        <link>https://www.kcindric.me/posts/</link>
+        <description>Recent content in Posts on kcindric</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <lastBuildDate>Sun, 06 Aug 2023 12:59:46 +0200</lastBuildDate>
+        <atom:link href="https://www.kcindric.me/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>PostgreSQL Full Text Search</title>
+            <link>https://www.kcindric.me/posts/psql-full-text-search/</link>
+            <pubDate>Sun, 06 Aug 2023 12:59:46 +0200</pubDate>
+            
+            <guid>https://www.kcindric.me/posts/psql-full-text-search/</guid>
+            <description>Let&amp;rsquo;s say we are building an app for searching movies in our private collection. Our app, for simplicity, can only search movies using movie titles. In the following examples we&amp;rsquo;ll show a few different approaches how to do a full text search using PostgreSQL.
 In this tutorial we&amp;rsquo;re going to use the sample database called &amp;ldquo;dvdrental&amp;rdquo; which can be found here.
 Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a movie called &amp;ldquo;Darkness War&amp;rdquo; and we want to search it.</description>
-    </item>
-    
-  </channel>
+            <content type="html"><![CDATA[<p>Let&rsquo;s say we are building an app for searching movies in our private collection. Our app, for simplicity, can only search movies using movie titles. In the following examples we&rsquo;ll show a few different approaches how to do a full text search using PostgreSQL.</p>
+<p>In this tutorial we&rsquo;re going to use the sample database called &ldquo;dvdrental&rdquo; which can be found <a href="https://www.postgresqltutorial.com/postgresql-getting-started/postgresql-sample-database/">here</a>.</p>
+<h2 id="full-text-search-using-like-and-ilike-operators">Full Text Search using <code>LIKE</code> and <code>ILIKE</code> operators</h2>
+<p>Let&rsquo;s say we have a movie called &ldquo;Darkness War&rdquo; and we want to search it. The first, most easiest, and the least optimized way would be using the <code>LIKE</code> operator and wrapping individual words in <code>%</code> characters:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">where</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%darkness%&#39;</span> <span style="color:#66d9ef">or</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%war%&#39;</span>
+</span></span></code></pre></div><p>The result:
+
+
+<p align="center">
+  <img src="images/sql-results-1.png" width="300"/>
+</p>
+<p style="text-align: center;">11 rows, 300 ms</p>
+</p>
+<p>11 results, but we&rsquo;re missing our desired title - the reason is that <code>LIKE</code> is case sensitive. To fix that, let&rsquo;s use <code>ILIKE</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">where</span> title <span style="color:#66d9ef">ilike</span> <span style="color:#e6db74">&#39;%darkness%&#39;</span> <span style="color:#66d9ef">or</span> title <span style="color:#66d9ef">ilike</span> <span style="color:#e6db74">&#39;%war%&#39;</span>
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-2.png" width="300"/>
+</p>
+<p style="text-align: center;">20 rows, 500 ms</p>
+
+<p>Now we got our wanted result, but the list seems un-ordered and we miss a ranking system which of the results is a better match to our search query.</p>
+<h2 id="enter-tsvector">Enter <code>tsvector</code></h2>
+<p>So this is the star of the tutorial. PostgreSQL documentation states the following:</p>
+<blockquote>
+<p>A <code>tsvector</code> value is a sorted list of distinct lexemes, which are words that have been normalized to merge different variants of the same word.</p>
+</blockquote>
+<p>We all heard about tokens in this AI language model age, and tokens in a sentence are simply words. Lexems are <em>normalized</em> tokens (words) of a sentence - this normalization may include converting all characters to lowercase, removing punctuation, and applying stemming (reducing words to their root form) to account for variations of the same word.</p>
+<p>A <code>tsvector</code> is an ordered list of lexemes, along with their positions and weights. The weights indicate the importance of a particular lexeme concerning the relevance of a document in a search query. A <code>tsvector</code> is essentially an optimized, compressed representation of the lexemes present in a document, which allows for faster full-text searches.</p>
+<p>Enough of theory, let&rsquo;s get our hands dirty!</p>
+<p>We can use the <code>to_tsvector</code> function to parse text and turn into a tsvector for us:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> to_tsvector(<span style="color:#e6db74">&#39;I refuse to answer that question on the grounds that I don&#39;&#39;t know the answer.&#39;</span>);
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-3.png" width="600"/>
+</p>
+
+<p>We can also do this to our film titles:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, to_tsvector(title) <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">limit</span> <span style="color:#ae81ff">10</span>;
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-4.png" width="300"/>
+</p>
+
+<p>To utilize <code>to_tsvector</code> in our full text search engine we&rsquo;re going to use two additional functions - <code>to_tsquery</code> and <code>ts_rank</code>.
+<code>to_tsquery</code> helps us query plain text against a <code>tsvector</code> while <code>ts_rank</code> returns how well our query matches the result. Combining those two in a query we can get ranked results back:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>)) <span style="color:#66d9ef">as</span> rank
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>);
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-5.png" width="300"/>
+</p>
+<p style="text-align: center;">20 rows, 400 ms</p>
+
+<p>Let&rsquo;s try and expand our query and find &ldquo;Darkness Wars&rdquo;:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-6.png" width="300"/>
+</p>
+<p style="text-align: center;">Syntax error</p>
+
+<p>Uh-oh! We&rsquo;re getting back a syntax error because <code>to_tsquery</code> only accepts single words without spaces or as the PostgreSQL documentation states:</p>
+<blockquote>
+<p><code>to_tsquery</code> creates a <code>tsquery</code> value from querytext, which must consist of single tokens separated by the tsquery operators <code>&amp;</code> (AND), <code>|</code> (OR), <code>!</code> (NOT), and <code>&lt;-&gt;</code> (FOLLOWED BY), possibly grouped using parentheses.</p>
+</blockquote>
+<p>In other words, we could search for &ldquo;Darknes Wars&rdquo; by formating our query like <code>to_tsquery('darkness&lt;-&gt;wars')</code> but that would be cumbersome to do each time in the SQL query or messy doing it programatically inside our app.</p>
+<p>The solution? <code>websearch_to_tsquery</code> function:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-7.png" width="300"/>
+</p>
+<p style="text-align: center;">1 result, 60ms</p>
+
+<p><code>websearch_to_tsquery</code> is a really powerful function and it&rsquo;s the function I personally like to use the most when using PostgreSQL as my full text search engine. It supports operators inside the query text:</p>
+<ul>
+<li><code>&quot;quoted text&quot;</code>: text inside quote marks will be converted to terms separated by <code>&lt;-&gt;</code> operators. Also, stop words are not simply discarded, but are accounted for.</li>
+<li><code>OR</code>: the word “or” will be converted to the <code>|</code> operator.</li>
+<li><code>+</code>: a plus will be converted to the <code>&amp;</code> operator.</li>
+<li><code>-</code>: a dash will be converted to the <code>!</code> operator.</li>
+</ul>
+<p>This can be utilized greatly to expand your search engine. For example, let&rsquo;s search for movies that have a word &ldquo;darkness&rdquo; in it but do not have the word &ldquo;war&rdquo;:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>);
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-8.png" width="300"/>
+</p>
+<p style="text-align: center;">1 result, 100ms</p>
+
+<h2 id="what-next">What next?</h2>
+<p>In the upcoming Part 2 we&rsquo;ll cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
+]]></content>
+        </item>
+        
+    </channel>
 </rss>
