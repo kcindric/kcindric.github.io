@@ -76,7 +76,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 </p>
 <p style="text-align: center;">20 rows, 400 ms</p>
 
-<p>Let&rsquo;s try and expand our query and find &ldquo;Darkness Wars&rdquo;:</p>
+<p>Let&rsquo;s try and expand our query and find &ldquo;Darkness War&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);

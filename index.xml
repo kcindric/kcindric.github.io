@@ -27,5 +27,15 @@ In this tutorial we&amp;rsquo;re going to use the sample database called &amp;ld
 Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a movie called &amp;ldquo;Darkness War&amp;rdquo; and we want to search it.</description>
     </item>
     
+    <item>
+      <title></title>
+      <link>https://www.kcindric.me/about/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.kcindric.me/about/</guid>
+      <description>Hey there, I&amp;rsquo;m Kristijan and I&amp;rsquo;m&amp;hellip; I&amp;rsquo;m not sure exactly what to be honest. I&amp;rsquo;m a software developer by trade and have been for 4 years now. I love to code, built my own website using Adobe Dreamweaver in the early 2000&amp;rsquo;s and since then didn&amp;rsquo;t stop hacking stuff on my computer.
+But I also have a Master&amp;rsquo;s degree in Biology and I&amp;rsquo;ve discovered two new cave snail species and published a paper about that.</description>
+    </item>
+    
   </channel>
 </rss>
