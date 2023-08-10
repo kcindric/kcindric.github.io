@@ -71,7 +71,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p align="center">
   <img src="images/sql-results-1.png" width="300"/>
 </p>
-<p style="text-align: center;">11 rows, 300 ms</p>
+<p style="text-align: center;">11 rows</p>
 </p>
 <p>11 results, but we&rsquo;re missing our desired title - the reason is that <code>LIKE</code> is case sensitive. To fix that, let&rsquo;s use <code>ILIKE</code>:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">where</span> title <span style="color:#66d9ef">ilike</span> <span style="color:#e6db74">&#39;%darkness%&#39;</span> <span style="color:#66d9ef">or</span> title <span style="color:#66d9ef">ilike</span> <span style="color:#e6db74">&#39;%war%&#39;</span>
@@ -80,7 +80,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p align="center">
   <img src="images/sql-results-2.png" width="300"/>
 </p>
-<p style="text-align: center;">20 rows, 500 ms</p>
+<p style="text-align: center;">20 rows</p>
 
 <p>Now we got our wanted result, but the list seems un-ordered and we miss a ranking system which of the results is a better match to our search query.</p>
 <h2 id="enter-tsvector">Enter <code>tsvector</code></h2>
@@ -117,7 +117,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p align="center">
   <img src="images/sql-results-5.png" width="300"/>
 </p>
-<p style="text-align: center;">20 rows, 400 ms</p>
+<p style="text-align: center;">20 rows</p>
 
 <p>Let&rsquo;s try and expand our query and find &ldquo;Darkness War&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
@@ -144,7 +144,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p align="center">
   <img src="images/sql-results-7.png" width="300"/>
 </p>
-<p style="text-align: center;">1 result, 60ms</p>
+<p style="text-align: center;">1 result</p>
 
 <p><code>websearch_to_tsquery</code> is a really powerful function and it&rsquo;s the function I personally like to use the most when using PostgreSQL as my full text search engine. It supports operators inside the query text:</p>
 <ul>
@@ -162,7 +162,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p align="center">
   <img src="images/sql-results-8.png" width="300"/>
 </p>
-<p style="text-align: center;">1 result, 100ms</p>
+<p style="text-align: center;">1 result</p>
 
 <h2 id="what-next">What next?</h2>
 <p>In the upcoming Part 2 we&rsquo;ll cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
