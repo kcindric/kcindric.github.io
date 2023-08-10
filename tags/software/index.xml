@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>kcindric</title>
-    <link>https://www.kcindric.me/</link>
-    <description>Recent content on kcindric</description>
+    <title>software on kcindric</title>
+    <link>https://www.kcindric.me/tags/software/</link>
+    <description>Recent content in software on kcindric</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 10 Aug 2023 10:11:03 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 10 Aug 2023 10:11:03 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/tags/software/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Move PostgreSQL data folder to another disk on Windows</title>
       <link>https://www.kcindric.me/posts/psql-move-to-new-disk/</link>
@@ -18,15 +18,6 @@ The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 wi
     </item>
     
     <item>
-      <title>List of my projects</title>
-      <link>https://www.kcindric.me/projects/</link>
-      <pubDate>Sun, 06 Aug 2023 12:59:46 +0200</pubDate>
-      
-      <guid>https://www.kcindric.me/projects/</guid>
-      <description>Working on it&amp;hellip;</description>
-    </item>
-    
-    <item>
       <title>PostgreSQL Full Text Search</title>
       <link>https://www.kcindric.me/posts/psql-full-text-search/</link>
       <pubDate>Sun, 06 Aug 2023 12:59:46 +0200</pubDate>
@@ -35,16 +26,6 @@ The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 wi
       <description>Let&amp;rsquo;s say we are building an app for searching movies in our private collection. Our app, for simplicity, can only search movies using movie titles. In the following examples we&amp;rsquo;ll show a few different approaches how to do a full text search using PostgreSQL.
 In this tutorial we&amp;rsquo;re going to use the sample database called &amp;ldquo;dvdrental&amp;rdquo; which can be found here.
 Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a movie called &amp;ldquo;Darkness War&amp;rdquo; and we want to search it.</description>
-    </item>
-    
-    <item>
-      <title></title>
-      <link>https://www.kcindric.me/about/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.kcindric.me/about/</guid>
-      <description>Hey there 👋, I&amp;rsquo;m Kristijan and I&amp;rsquo;m&amp;hellip; I&amp;rsquo;m not sure exactly what to be honest. I&amp;rsquo;m a software developer by trade and have been for 4 years now. I love to code, built my own website using Adobe Dreamweaver in the early 2000&amp;rsquo;s and since then didn&amp;rsquo;t stop hacking stuff on my computer.
-But I also have a Master&amp;rsquo;s degree in Biology and I&amp;rsquo;ve discovered two new cave snail species and published a paper about that.</description>
     </item>
     
   </channel>

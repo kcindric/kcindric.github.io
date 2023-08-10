@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="">
+<meta name="description" content="I&amp;rsquo;m running a PostgreSQL 12 instance as a Windows Service on one of my machines and one of the databases is getting too big (~72GB) for my C: drive. I have a great candidate for where to migrate my data - a nearly empty 1TB SSD attached to the machine.
+The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 with the lid closed. It has some juciy specs for its time such as 32GB RAM and 4GB GPU." />
+<meta name="keywords" content=", software" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="https://www.kcindric.me/posts/psql-move-to-new-disk/" />
+
+
+    <title>
+        
+            Move PostgreSQL data folder to another disk on Windows :: kcindric 
+        
+    </title>
+
+
+
+
+
+<link rel="stylesheet" href="/main.cd1dd9fb9bde4c395e1a0ebc4fa353129f6502a7112e24f3c2e1de53f4cabac5.css" integrity="sha256-zR3Z&#43;5veTDleGg68T6NTEp9lAqcRLiTzwuHeU/TKusU=">
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+<meta itemprop="name" content="Move PostgreSQL data folder to another disk on Windows">
+<meta itemprop="description" content="I&rsquo;m running a PostgreSQL 12 instance as a Windows Service on one of my machines and one of the databases is getting too big (~72GB) for my C: drive. I have a great candidate for where to migrate my data - a nearly empty 1TB SSD attached to the machine.
+The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 with the lid closed. It has some juciy specs for its time such as 32GB RAM and 4GB GPU."><meta itemprop="datePublished" content="2023-08-10T10:11:03+02:00" />
+<meta itemprop="dateModified" content="2023-08-10T10:11:03+02:00" />
+<meta itemprop="wordCount" content="439">
+<meta itemprop="keywords" content="software," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Move PostgreSQL data folder to another disk on Windows"/>
+<meta name="twitter:description" content="I&rsquo;m running a PostgreSQL 12 instance as a Windows Service on one of my machines and one of the databases is getting too big (~72GB) for my C: drive. I have a great candidate for where to migrate my data - a nearly empty 1TB SSD attached to the machine.
+The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 with the lid closed. It has some juciy specs for its time such as 32GB RAM and 4GB GPU."/>
+
+
+
+    <meta property="og:title" content="Move PostgreSQL data folder to another disk on Windows" />
+<meta property="og:description" content="I&rsquo;m running a PostgreSQL 12 instance as a Windows Service on one of my machines and one of the databases is getting too big (~72GB) for my C: drive. I have a great candidate for where to migrate my data - a nearly empty 1TB SSD attached to the machine.
+The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 with the lid closed. It has some juciy specs for its time such as 32GB RAM and 4GB GPU." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.kcindric.me/posts/psql-move-to-new-disk/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-08-10T10:11:03+02:00" />
+<meta property="article:modified_time" content="2023-08-10T10:11:03+02:00" />
+
+
+
+
+
+
+    <meta property="article:published_time" content="2023-08-10 10:11:03 &#43;0200 CEST" />
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                kcindric@kcindric.me ~ $</span>
+            <span class="logo__cursor" style=
+                  "
+                   background-color:#609fd8;
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+            
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">~/about</a></li><li><a href="/posts">~/posts</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+            
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        3 minutes
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="https://www.kcindric.me/posts/psql-move-to-new-disk/">Move PostgreSQL data folder to another disk on Windows</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <p>I&rsquo;m running a PostgreSQL 12 instance as a Windows Service on one of my machines and one of the databases is getting too big (~72GB) for my <code>C:</code> drive. I have a great candidate for where to migrate my data - a nearly empty 1TB SSD attached to the machine.</p>
+<p>The machine in question is my old Lenovo Thinkpad P51 laptop which I run 24/7 with the lid closed. It has some juciy specs for its time such as 32GB RAM and 4GB GPU. I plan to install Linux on it and use it as my home server but for now I&rsquo;m running stock Windows 10 + docker for some services I fiddle around.</p>
+<h2 id="locating-the-data-folder-and-the-name-of-the-postgresql-service">Locating the data folder and the name of the PostgreSQL service</h2>
+<p>To locate where our database data is stored a simple query is enough:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">SHOW</span> data_directory;
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-1.png" width="300"/>
+</p>
+<p style="text-align: center;">Location of my data folder</p>
+
+<p>Next step would be to stop the PostgreSQL service. We can do that by running <code>services.msc</code> and finding our service in the list:</p>
+
+
+<p align="center">
+  <img src="images/postgresql-old-service.png" width="600"/>
+</p>
+<p style="text-align: center;">Note: postgresql-x64-12 is the "real" name of the service, not the "Display Name". You can see that in the properties of the service inside the services app.</p>
+
+<p>Stop the service and copy the <code>data</code> folder to the new location. In my case that&rsquo;s going to be <code>F:/psql</code>.</p>
+<p><strong>Note:</strong> By stopping the service we avoid having corrupt data in our new <code>data</code> folder. This step is highly important!</p>
+<h2 id="creating-a-new-postresql-service">Creating a new PostreSQL service</h2>
+<p>PostgreSQL installation comes with a handy app called <code>pg_ctl</code> which we can run in our command line. We&rsquo;re going to use it to register our new service and un-register (delete) our old one.</p>
+<p>To register our new service we need to run the following command where you substitute <code>postgresql-x64-12-new-service</code> with your desired service name and <code>F:/psql:/data</code> with the new path of your migrated <code>data</code> folder:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span><span style="color:#e6db74">&#34;pg_ctl register -N postgresql-x64-12-new-service -D &#34;</span>F:/psql/data<span style="color:#e6db74">&#34;</span>
+</span></span></code></pre></div><p>What I usually do next is test was my migration and creation of the new PostgreSQL service successful is rename the old <code>data</code> folder to something like <code>data_old</code>. Then I start my new service, if it&rsquo;s not already started, and try to connect to my PosgreSQL server and query a database. If all went well this should work seamlessly.</p>
+<h2 id="deleting-the-old-service">Deleting the old service</h2>
+<p>After testing that the migration went well we need to delete the old service by running the next command and including the name of the old service:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span>pg_ctl unregister -N postgresql-x64-12
+</span></span></code></pre></div><h2 id="cleanup">Cleanup</h2>
+<p>After everything is done, I like to keep the <code>data_old</code> folder for a few days before deleting it. Call me paranoid but I like to have a backup plan if something goes wrong.</p>
+
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
+
+        <span class="tag"><a href="https://www.kcindric.me/tags/software/">software</a></span>
+        
+    </p>
+
+      
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        439 Words
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2023-08-10 10:11
+        
+
+         
+          
+        
+      </p>
+    </div>
+
+    
+    <div class="pagination">
+        
+
+        <div class="pagination__buttons">
+            
+
+            
+            <span class="button next">
+                <a href="https://www.kcindric.me/posts/psql-full-text-search/">
+                    <span class="button__text">PostgreSQL Full Text Search</span>
+                    <span class="button__icon">→</span>
+                </a>
+            </span>
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.205d491810c28f95aa953fae884e1c27abe13fdf93ec63b882d0036b248d4a6282eb2d134e4e7225c6ad6e86db87b08488a361ca4a7383d01fcff43f3d57b9c3.js" integrity="sha512-IF1JGBDCj5WqlT&#43;uiE4cJ6vhP9&#43;T7GO4gtADaySNSmKC6y0TTk5yJcatbobbh7CEiKNhykpzg9Afz/Q/PVe5ww=="></script>
+
+
+
+    </body>
+</html>

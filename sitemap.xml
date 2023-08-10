@@ -3,7 +3,19 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://www.kcindric.me/</loc>
-    <lastmod>2023-08-06T12:59:46+02:00</lastmod>
+    <lastmod>2023-08-10T10:11:03+02:00</lastmod>
+  </url><url>
+    <loc>https://www.kcindric.me/posts/psql-move-to-new-disk/</loc>
+    <lastmod>2023-08-10T10:11:03+02:00</lastmod>
+  </url><url>
+    <loc>https://www.kcindric.me/posts/</loc>
+    <lastmod>2023-08-10T10:11:03+02:00</lastmod>
+  </url><url>
+    <loc>https://www.kcindric.me/tags/software/</loc>
+    <lastmod>2023-08-10T10:11:03+02:00</lastmod>
+  </url><url>
+    <loc>https://www.kcindric.me/tags/</loc>
+    <lastmod>2023-08-10T10:11:03+02:00</lastmod>
   </url><url>
     <loc>https://www.kcindric.me/projects/</loc>
     <lastmod>2023-08-06T12:59:46+02:00</lastmod>
@@ -11,15 +23,10 @@
     <loc>https://www.kcindric.me/posts/psql-full-text-search/</loc>
     <lastmod>2023-08-06T12:59:46+02:00</lastmod>
   </url><url>
-    <loc>https://www.kcindric.me/posts/</loc>
-    <lastmod>2023-08-06T12:59:46+02:00</lastmod>
-  </url><url>
     <loc>https://www.kcindric.me/about/</loc>
   </url><url>
     <loc>https://www.kcindric.me/blog/</loc>
   </url><url>
     <loc>https://www.kcindric.me/series/</loc>
-  </url><url>
-    <loc>https://www.kcindric.me/tags/</loc>
   </url>
 </urlset>
