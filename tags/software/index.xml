@@ -6,7 +6,17 @@
     <description>Recent content in software on kcindric</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 10 Aug 2023 10:11:03 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/tags/software/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 16 Aug 2023 12:59:46 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/tags/software/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Multiple Column PostgreSQL Full Text Search</title>
+      <link>https://www.kcindric.me/posts/multiple-column-psql-full-text-search/</link>
+      <pubDate>Wed, 16 Aug 2023 12:59:46 +0200</pubDate>
+      
+      <guid>https://www.kcindric.me/posts/multiple-column-psql-full-text-search/</guid>
+      <description>In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+Now we&amp;rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database.</description>
+    </item>
+    
     <item>
       <title>Move PostgreSQL data folder to another disk on Windows</title>
       <link>https://www.kcindric.me/posts/psql-move-to-new-disk/</link>

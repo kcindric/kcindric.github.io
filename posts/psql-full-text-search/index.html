@@ -42,7 +42,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 In this tutorial we&rsquo;re going to use the sample database called &ldquo;dvdrental&rdquo; which can be found here.
 Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie called &ldquo;Darkness War&rdquo; and we want to search it."><meta itemprop="datePublished" content="2023-08-06T12:59:46+02:00" />
 <meta itemprop="dateModified" content="2023-08-06T12:59:46+02:00" />
-<meta itemprop="wordCount" content="781">
+<meta itemprop="wordCount" content="795">
 <meta itemprop="keywords" content="software," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="PostgreSQL Full Text Search"/>
@@ -201,7 +201,8 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <code>to_tsquery</code> helps us query plain text against a <code>tsvector</code> while <code>ts_rank</code> returns how well our query matches the result. Combining those two in a query we can get ranked results back:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -212,7 +213,8 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <p>Let&rsquo;s try and expand our query and find &ldquo;Darkness War&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -228,7 +230,8 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <p>The solution? <code>websearch_to_tsquery</code> function:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -246,7 +249,8 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <p>This can be utilized greatly to expand your search engine. For example, let&rsquo;s search for movies that have a word &ldquo;darkness&rdquo; in it but do not have the word &ldquo;war&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -255,7 +259,7 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <p style="text-align: center;">1 result</p>
 
 <h2 id="what-next">What next?</h2>
-<p>In the upcoming Part 2 we&rsquo;ll cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
+<p>In <a href="/posts/multiple-column-psql-full-text-search/">Part 2</a> we cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
 
       </div>
     </article>
@@ -281,7 +285,7 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
           <line x1="16" y1="17" x2="8" y2="17"></line>
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
-        781 Words
+        795 Words
       </p>
 
       <p>

@@ -1,7 +1,7 @@
 {
 	"version": 3,
 	"file": "main.css",
-	"sourceRoot": "/Users/kcindric/Documents/blog/kcindric-blog",
+	"sourceRoot": "/Users/kcindric/Documents/dev/blog/kcindric-blog",
 	"sources": [
 		"themes/hello-friend-ng/assets/scss/main.scss",
 		"themes/hello-friend-ng/assets/scss/_normalize.scss",

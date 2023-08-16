@@ -5,8 +5,88 @@
         <description>Recent content in Posts on kcindric</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Thu, 10 Aug 2023 10:11:03 +0200</lastBuildDate>
+        <lastBuildDate>Wed, 16 Aug 2023 12:59:46 +0200</lastBuildDate>
         <atom:link href="https://www.kcindric.me/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>Multiple Column PostgreSQL Full Text Search</title>
+            <link>https://www.kcindric.me/posts/multiple-column-psql-full-text-search/</link>
+            <pubDate>Wed, 16 Aug 2023 12:59:46 +0200</pubDate>
+            
+            <guid>https://www.kcindric.me/posts/multiple-column-psql-full-text-search/</guid>
+            <description>In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+Now we&amp;rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database.</description>
+            <content type="html"><![CDATA[<p>In <a href="/posts/psql-full-text-search/">Part 1</a> about full text search using PostgreSQL, we talked about using functions such as <code>to_tsquery</code> and <code>websearch_to_tsquery</code>, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called <em>lexemes</em> using <code>tsquery</code>.</p>
+<p>Now we&rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our <code>dvdrental</code> database. In the stock database multi-column indexed search is already implemented but we&rsquo;re going to scrap that for the sake of this tutorial:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">drop</span> <span style="color:#66d9ef">index</span> idx_fulltext;
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">alter</span> <span style="color:#66d9ef">table</span> film <span style="color:#66d9ef">drop</span> <span style="color:#66d9ef">column</span> fulltext;
+</span></span></code></pre></div><h2 id="creating-a-combined-tsvector-column">Creating a combined <code>tsvector</code> column</h2>
+<p>Doing a full text search through multiple columns is easy as combining the <code>to_tsvector</code> results of wanted columns into one concatenated result:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> to_tsvector(title) <span style="color:#f92672">||</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">||</span>  to_tsvector(description) <span style="color:#66d9ef">as</span> fulltext 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film;
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-1.png" width="500"/>
+</p>
+<p style="text-align: center;">1000 rows</p>
+
+<p>But in this approach each column has the same &lsquo;importance&rsquo; in our search. To optimize this we want to add more importance to our <code>title</code> column in front of the <code>description</code>. Fortunately, Postgres has this covered with the <code>setweight</code> function! This functions accepts two parameters, a <code>tsvector</code> value and a letter from A to D which determines the importance, or weight, of the column. Combining all this we get the following query:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> setweight(to_tsvector(title), <span style="color:#e6db74">&#39;A&#39;</span>) <span style="color:#f92672">||</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">||</span>  setweight(to_tsvector(description), <span style="color:#e6db74">&#39;B&#39;</span>) <span style="color:#66d9ef">as</span> fulltext
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film;
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-2.png" width="500"/>
+</p>
+<p style="text-align: center;">1000 rows</p>
+
+<p>We could add <code>websearch_to_tsquery</code> to the mix from the <a href="/posts/psql-full-text-search/">Part 1</a> but the query would be too messy and hard to read. Instead, lets add a new column which is a calculated <code>tsvector</code> column from the combination of <code>title</code> and <code>description</code> and has a search weight added for prioritizing results. The best candidate are <em>generated columns</em>:</p>
+<blockquote>
+<p>A generated column is a special column that is always computed from other columns. Thus, it is for columns what a view is for tables. - PostgreSQL documentation</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">alter</span> <span style="color:#66d9ef">table</span> film 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">add</span> fulltext tsvector 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">generated</span> always <span style="color:#66d9ef">as</span>	(
+</span></span><span style="display:flex;"><span>	setweight(to_tsvector(<span style="color:#e6db74">&#39;simple&#39;</span>, title), <span style="color:#e6db74">&#39;A&#39;</span>) <span style="color:#f92672">||</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">||</span>  setweight(to_tsvector(<span style="color:#e6db74">&#39;simple&#39;</span>, description), <span style="color:#e6db74">&#39;B&#39;</span>) :: tsvector
+</span></span><span style="display:flex;"><span>) stored;
+</span></span></code></pre></div><p>Note the added <code>simple</code> value in our <code>to_tsvector</code> function. We add this because PostgreSQL throws an exception if we explicitly define the &lsquo;regional configuration&rsquo; or a dictionary which will be used for deriving lexemes. Other options are <code>english</code>, <code>spanish</code> etc. Read more about that in the official PostgreSQL documentation.</p>
+<p>Now we can easily search through both of our columns, giving priority to the <code>title</code> column using <code>websearch_to_tsquery</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(fulltext, websearch_to_tsquery(<span style="color:#e6db74">&#39;desert&#39;</span>)) <span style="color:#66d9ef">as</span> rank
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> fulltext <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;desert&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
+</span></span></code></pre></div>
+
+<p align="center">
+  <img src="images/sql-results-3.png" width="700"/>
+</p>
+<p style="text-align: center;">44 rows</p>
+
+<h2 id="indexes">Indexes</h2>
+<p>When we do a <code>ANALYZE EXPLAIN</code> we can see that the PostgreSQL query profiler is not happy:</p>
+
+
+<p align="center">
+  <img src="images/query-profiler-1.png" width="700"/>
+</p>
+<p style="text-align: center;">Profiler is not happy</p>
+
+<p>To optimize this query we can add an idex to our <code>fulltext</code> column. The most optimized index for a <code>tsvector</code> data type is called <code>GIN</code> and the following query will create one:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">INDEX</span> search_fulltext <span style="color:#66d9ef">ON</span> film <span style="color:#66d9ef">USING</span> GIN(fulltext);
+</span></span></code></pre></div><p>Now when we check the profiler we can see the results are much much better:</p>
+
+
+<p align="center">
+  <img src="images/query-profiler-2.png" width="700"/>
+</p>
+<p style="text-align: center;">Much better!</p>
+
+<p>We got from 1.609ms to 0.144ms, that&rsquo;s a huge performance improvement!</p>
+<h2 id="what-next">What next?</h2>
+<p>In the next part we&rsquo;ll cover how to setup a REST API direct on top of our PostgreSQL db and do full text search on our data.</p>
+]]></content>
+        </item>
         
         <item>
             <title>Move PostgreSQL data folder to another disk on Windows</title>
@@ -111,7 +191,8 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <code>to_tsquery</code> helps us query plain text against a <code>tsvector</code> while <code>ts_rank</code> returns how well our query matches the result. Combining those two in a query we can get ranked results back:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -122,7 +203,8 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p>Let&rsquo;s try and expand our query and find &ldquo;Darkness War&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -138,7 +220,8 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p>The solution? <code>websearch_to_tsquery</code> function:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;darkness war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -156,7 +239,8 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p>This can be utilized greatly to expand your search engine. For example, let&rsquo;s search for movies that have a word &ldquo;darkness&rdquo; in it but do not have the word &ldquo;war&rdquo;:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(to_tsvector(title), websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">where</span> to_tsvector(title) <span style="color:#f92672">@@</span> websearch_to_tsquery(<span style="color:#e6db74">&#39;&#34;darkness&#34; -war&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">order</span> <span style="color:#66d9ef">by</span> rank <span style="color:#66d9ef">desc</span>;
 </span></span></code></pre></div>
 
 <p align="center">
@@ -165,7 +249,7 @@ Full Text Search using LIKE and ILIKE operators Let&amp;rsquo;s say we have a mo
 <p style="text-align: center;">1 result</p>
 
 <h2 id="what-next">What next?</h2>
-<p>In the upcoming Part 2 we&rsquo;ll cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
+<p>In <a href="/posts/multiple-column-psql-full-text-search/">Part 2</a> we cover indexes and full text search through multiple columns. After doing that, in Part 3 we&rsquo;re going to cover how to quickly create an REST api on top of our database using <a href="https://postgrest.org/">PostgREST</a> and perform our full text search from a client app.</p>
 ]]></content>
         </item>
         
