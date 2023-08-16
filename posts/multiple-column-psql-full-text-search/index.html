@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="author" content="">
-<meta name="description" content="In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+<meta name="description" content="In Part 1 of this tutorial about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
 Now we&amp;rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database." />
 <meta name="keywords" content=", software" />
 <meta name="robots" content="noodp" />
@@ -37,20 +37,20 @@ Now we&amp;rsquo;re going to expand our knowledge and implement multi-column ful
 
 
 <meta itemprop="name" content="Multiple Column PostgreSQL Full Text Search">
-<meta itemprop="description" content="In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+<meta itemprop="description" content="In Part 1 of this tutorial about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
 Now we&rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database."><meta itemprop="datePublished" content="2023-08-16T12:59:46+02:00" />
 <meta itemprop="dateModified" content="2023-08-16T12:59:46+02:00" />
-<meta itemprop="wordCount" content="542">
+<meta itemprop="wordCount" content="545">
 <meta itemprop="keywords" content="software," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Multiple Column PostgreSQL Full Text Search"/>
-<meta name="twitter:description" content="In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+<meta name="twitter:description" content="In Part 1 of this tutorial about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
 Now we&rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database."/>
 
 
 
     <meta property="og:title" content="Multiple Column PostgreSQL Full Text Search" />
-<meta property="og:description" content="In Part 1 about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
+<meta property="og:description" content="In Part 1 of this tutorial about full text search using PostgreSQL, we talked about using functions such as to_tsquery and websearch_to_tsquery, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called lexemes using tsquery.
 Now we&rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our dvdrental database." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.kcindric.me/posts/multiple-column-psql-full-text-search/" /><meta property="article:section" content="posts" />
@@ -146,11 +146,11 @@ Now we&rsquo;re going to expand our knowledge and implement multi-column full te
       
 
       <div class="post-content">
-        <p>In <a href="/posts/psql-full-text-search/">Part 1</a> about full text search using PostgreSQL, we talked about using functions such as <code>to_tsquery</code> and <code>websearch_to_tsquery</code>, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called <em>lexemes</em> using <code>tsquery</code>.</p>
+        <p>In <a href="/posts/psql-full-text-search/">Part 1</a> of this tutorial about full text search using PostgreSQL, we talked about using functions such as <code>to_tsquery</code> and <code>websearch_to_tsquery</code>, which builds upon PostgreSQL ability to decompose longer sentences to smaller chunks called <em>lexemes</em> using <code>tsquery</code>.</p>
 <p>Now we&rsquo;re going to expand our knowledge and implement multi-column full text search and add indexes for a more performant search. In this next step we want to search film titles AND film descriptions using our <code>dvdrental</code> database. In the stock database multi-column indexed search is already implemented but we&rsquo;re going to scrap that for the sake of this tutorial:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">drop</span> <span style="color:#66d9ef">index</span> idx_fulltext;
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">alter</span> <span style="color:#66d9ef">table</span> film <span style="color:#66d9ef">drop</span> <span style="color:#66d9ef">column</span> fulltext;
-</span></span></code></pre></div><h2 id="creating-a-combined-tsvector-column">Creating a combined <code>tsvector</code> column</h2>
+</span></span></code></pre></div><h2 id="creating-a-combined-tsvector-column">Creating a combined tsvector column</h2>
 <p>Doing a full text search through multiple columns is easy as combining the <code>to_tsvector</code> results of wanted columns into one concatenated result:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> to_tsvector(title) <span style="color:#f92672">||</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">||</span>  to_tsvector(description) <span style="color:#66d9ef">as</span> fulltext 
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film;
@@ -240,7 +240,7 @@ Now we&rsquo;re going to expand our knowledge and implement multi-column full te
           <line x1="16" y1="17" x2="8" y2="17"></line>
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
-        542 Words
+        545 Words
       </p>
 
       <p>

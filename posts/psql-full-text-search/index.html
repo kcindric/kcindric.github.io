@@ -152,7 +152,7 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
       <div class="post-content">
         <p>Let&rsquo;s say we are building an app for searching movies in our private collection. Our app, for simplicity, can only search movies using movie titles. In the following examples we&rsquo;ll show a few different approaches how to do a full text search using PostgreSQL.</p>
 <p>In this tutorial we&rsquo;re going to use the sample database called &ldquo;dvdrental&rdquo; which can be found <a href="https://www.postgresqltutorial.com/postgresql-getting-started/postgresql-sample-database/">here</a>.</p>
-<h2 id="full-text-search-using-like-and-ilike-operators">Full Text Search using <code>LIKE</code> and <code>ILIKE</code> operators</h2>
+<h2 id="full-text-search-using-like-and-ilike-operators">Full Text Search using LIKE and ILIKE operators</h2>
 <p>Let&rsquo;s say we have a movie called &ldquo;Darkness War&rdquo; and we want to search it. The first, most easiest, and the least optimized way would be using the <code>LIKE</code> operator and wrapping individual words in <code>%</code> characters:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> film <span style="color:#66d9ef">where</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%darkness%&#39;</span> <span style="color:#66d9ef">or</span> title <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%war%&#39;</span>
 </span></span></code></pre></div><p>The result:
@@ -173,7 +173,7 @@ Full Text Search using LIKE and ILIKE operators Let&rsquo;s say we have a movie 
 <p style="text-align: center;">20 rows</p>
 
 <p>Now we got our wanted result, but the list seems un-ordered and we miss a ranking system which of the results is a better match to our search query.</p>
-<h2 id="enter-tsvector">Enter <code>tsvector</code></h2>
+<h2 id="enter-tsvector">Enter tsvector</h2>
 <p>So this is the star of the tutorial. PostgreSQL documentation states the following:</p>
 <blockquote>
 <p>A <code>tsvector</code> value is a sorted list of distinct lexemes, which are words that have been normalized to merge different variants of the same word.</p>
