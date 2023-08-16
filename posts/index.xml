@@ -50,7 +50,7 @@ Now we&amp;rsquo;re going to expand our knowledge and implement multi-column ful
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">generated</span> always <span style="color:#66d9ef">as</span>	(
 </span></span><span style="display:flex;"><span>	setweight(to_tsvector(<span style="color:#e6db74">&#39;simple&#39;</span>, title), <span style="color:#e6db74">&#39;A&#39;</span>) <span style="color:#f92672">||</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">||</span>  setweight(to_tsvector(<span style="color:#e6db74">&#39;simple&#39;</span>, description), <span style="color:#e6db74">&#39;B&#39;</span>) :: tsvector
 </span></span><span style="display:flex;"><span>) stored;
-</span></span></code></pre></div><p>Note the added <code>simple</code> value in our <code>to_tsvector</code> function. We add this because PostgreSQL throws an exception if we explicitly define the &lsquo;regional configuration&rsquo; or a dictionary which will be used for deriving lexemes. Other options are <code>english</code>, <code>spanish</code> etc. Read more about that in the official PostgreSQL documentation.</p>
+</span></span></code></pre></div><p>Note the added <code>simple</code> value in our <code>to_tsvector</code> function. We add this because PostgreSQL throws an exception if we explicitly don&rsquo;t define the &lsquo;regional configuration&rsquo; or a dictionary which will be used for deriving lexemes. Other options are <code>english</code>, <code>spanish</code> etc. Read more about that in the official PostgreSQL documentation.</p>
 <p>Now we can easily search through both of our columns, giving priority to the <code>title</code> column using <code>websearch_to_tsquery</code>:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> title, ts_rank(fulltext, websearch_to_tsquery(<span style="color:#e6db74">&#39;desert&#39;</span>)) <span style="color:#66d9ef">as</span> rank
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">from</span> film
@@ -72,7 +72,7 @@ Now we&amp;rsquo;re going to expand our knowledge and implement multi-column ful
 </p>
 <p style="text-align: center;">Profiler is not happy</p>
 
-<p>To optimize this query we can add an idex to our <code>fulltext</code> column. The most optimized index for a <code>tsvector</code> data type is called <code>GIN</code> and the following query will create one:</p>
+<p>To optimize this query we can add an index to our <code>fulltext</code> column. The most optimized index for a <code>tsvector</code> data type is called <code>GIN</code> and the following query will create one:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">INDEX</span> search_fulltext <span style="color:#66d9ef">ON</span> film <span style="color:#66d9ef">USING</span> GIN(fulltext);
 </span></span></code></pre></div><p>Now when we check the profiler we can see the results are much much better:</p>
 
