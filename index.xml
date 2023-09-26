@@ -6,7 +6,16 @@
     <description>Recent content on kcindric</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 16 Aug 2023 12:59:46 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 26 Sep 2023 12:00:00 +0200</lastBuildDate><atom:link href="https://www.kcindric.me/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>.NET Background service with a queue</title>
+      <link>https://www.kcindric.me/posts/background-service-with-queue/</link>
+      <pubDate>Tue, 26 Sep 2023 12:00:00 +0200</pubDate>
+      
+      <guid>https://www.kcindric.me/posts/background-service-with-queue/</guid>
+      <description>The Problem Recently at my job we had the next problem - in one of our apps we have a functionality to export some data in the form of Excel files. A user requests some kind of report, request is send to the .NET Web API, which then returns the generated report from the report service back in the form of a FileStream, which is then converted to a .xlsx file in the front end and downloaded to the user machine.</description>
+    </item>
+    
     <item>
       <title>Multiple Column PostgreSQL Full Text Search</title>
       <link>https://www.kcindric.me/posts/multiple-column-psql-full-text-search/</link>

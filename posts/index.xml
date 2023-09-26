@@ -5,8 +5,128 @@
         <description>Recent content in Posts on kcindric</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Wed, 16 Aug 2023 12:59:46 +0200</lastBuildDate>
+        <lastBuildDate>Tue, 26 Sep 2023 12:00:00 +0200</lastBuildDate>
         <atom:link href="https://www.kcindric.me/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>.NET Background service with a queue</title>
+            <link>https://www.kcindric.me/posts/background-service-with-queue/</link>
+            <pubDate>Tue, 26 Sep 2023 12:00:00 +0200</pubDate>
+            
+            <guid>https://www.kcindric.me/posts/background-service-with-queue/</guid>
+            <description>The Problem Recently at my job we had the next problem - in one of our apps we have a functionality to export some data in the form of Excel files. A user requests some kind of report, request is send to the .NET Web API, which then returns the generated report from the report service back in the form of a FileStream, which is then converted to a .xlsx file in the front end and downloaded to the user machine.</description>
+            <content type="html"><![CDATA[<h2 id="the-problem">The Problem</h2>
+<p>Recently at my job we had the next problem - in one of our apps we have a functionality to export some data in the form of Excel files. A user requests some kind of report, request is send to the .NET Web API, which then returns the generated report from the report service back in the form of a <code>FileStream</code>, which is then converted to a <code>.xlsx</code> file in the front end and downloaded to the user machine.</p>
+<p>This piece of code shows how we handled report generation on the Controller level:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C#" data-lang="C#"><span style="display:flex;"><span><span style="color:#a6e22e">[HttpPost(&#34;Download&#34;)]</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">async</span> Task&lt;IActionResult&gt; DownloadFile([FromBody] DownloadReportRequest request)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// generate .xlsx and convert into a stream</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> fileStream = <span style="color:#66d9ef">await</span> _reportsService.GenerateReport(request);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// return the file</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> FileStreamResult(fileStream, <span style="color:#e6db74">&#34;application/ms-excel&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>All was great and dandy until the users started requesting &lsquo;bigger&rsquo; reports (in our case data from a larger timespan) which in the end prolonged the time which the report service needed to generate those reports. As a result, the browser refused to wait for so long (minutes) and timed-out the connection with the API. It was a bad design decision in the first place to keep the browser waiting for the response but now we had unhappy users on the other side not getting their reports. Something had to be done!</p>
+<h2 id="the-solution">The Solution</h2>
+<p>The solution was pretty straightforward - let&rsquo;s take the user request for the report, respond to the UI that the request was received so the user can continue doing other tasks in the app, generate the report in the background and send it via email to the user when it&rsquo;s finished!</p>
+<p>To implement this idea I used <code>ConcurrentQueue&lt;T&gt;</code> collection for storing user requests which is then consumed by a service implementing the .NET <code>BackgroundService</code> base class for long running services.</p>
+<h3 id="implementing-concurrentqueue">Implementing ConcurrentQueue</h3>
+<p><code>ConcurrentQueue&lt;T&gt;</code> is a thread-safe first in-first out (FIFO) collection and it&rsquo;s an ideal collection for this use-case. For generating the report we need the <code>GenerateReportRequest</code> object containing all the needed data and the email of the user so the type of the queue collection will be a tuple containing those two values -&gt; <code>ConcurrentQueue&lt;(GenerateReportRequest, string)&gt;</code>.</p>
+<p>The clean way to use this collection is to encapsulate it and expose its <code>Enqueue</code> and <code>Dequeue</code> functionalities:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C#" data-lang="C#"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">IReportGenerationQueue</span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> Enqueue(<span style="color:#66d9ef">string</span> email, GenerateReportRequest request);
+</span></span><span style="display:flex;"><span>    (<span style="color:#66d9ef">string</span> email, GenerateReportRequest? request) Dequeue();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C#" data-lang="C#"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ReportGenerationQueue</span> : IReportGenerationQueue
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">readonly</span> ConcurrentQueue&lt;(<span style="color:#66d9ef">string</span>, GenerateReportRequest?)&gt; _items = <span style="color:#66d9ef">new</span>();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> Enqueue(<span style="color:#66d9ef">string</span> email, GenerateReportRequest request)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (request == <span style="color:#66d9ef">null</span>) <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> ArgumentNullException(nameof(request)); 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#66d9ef">string</span>.IsNullOrWhiteSpace(email)) <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> ArgumentNullException(<span style="color:#e6db74">&#34;Report generation email&#34;</span>);
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        _items.Enqueue((email, request));
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> (<span style="color:#66d9ef">string</span>, GenerateReportRequest?) Dequeue()
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        _items.TryDequeue(<span style="color:#66d9ef">out</span> <span style="color:#66d9ef">var</span> workItem);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> workItem;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>To use this <code>ReportGenerationQueue</code> firstly we need to register it as a Singleton service:
+<code>services.AddSingleton&lt;IReportGenerationQueue, ReportGenerationQueue&gt;();</code></p>
+<p>And then we can use it in the Controller to enqueue background jobs:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C#" data-lang="C#"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ReportsController</span> : ControllerBase
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">readonly</span> IReportGenerationQueue _queue;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> ReportsController(IReportGenerationQueue queue)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        _queue = queue;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">
+</span></span></span><span style="display:flex;"><span><span style="color:#a6e22e">    [HttpPost(&#34;Generate&#34;)]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> IActionResult GenerateFile([FromBody] GenerateReportRequest request)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// enqueue report generation with users email an the request</span>
+</span></span><span style="display:flex;"><span>        _queue.Enqueue(User.Identity.Name, request);
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> NoContent();
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="what-is-a-backgroundservice">What is a BackgroundService?</h3>
+<p>Next we need a worker which will run constantly and consume (dequeue) items from the <code>ConcurrentQueue&lt;(GenerateReportRequest, string)&gt;</code> collection.
+<code>BackgroundService</code> is a base class which we inherit from to create long running tasks in our app. Each class that inherits from <code>BackgroundService</code> needs to implement (override) the <code>Task ExecuteAsync(CancellationToken)</code> method. This method is invoked at the start of our long running task. The idea is to use a <code>while</code> loop inside this method to create an always running loop until the cancellation is requested via the <code>CancellationToken</code>.</p>
+<p>This is how it looks in practice:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C#" data-lang="C#"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ReportBackgroundWorker</span> : BackgroundService
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">readonly</span> IReportGenerationQueue _queue;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">readonly</span> IServiceScopeFactory _serviceScopeFactory;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> ReportBackgroundWorker(
+</span></span><span style="display:flex;"><span>        IReportGenerationQueue queue,
+</span></span><span style="display:flex;"><span>        IServiceScopeFactory serviceScopeFactory)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        _queue = queue;
+</span></span><span style="display:flex;"><span>        _serviceScopeFactory = serviceScopeFactory;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">protected</span> <span style="color:#66d9ef">override</span> <span style="color:#66d9ef">async</span> Task ExecuteAsync(CancellationToken stoppingToken)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (!stoppingToken.IsCancellationRequested)
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">await</span> DoWorkAsync();
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">async</span> Task DoWorkAsync()
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> workItem = _queue.Dequeue();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(workItem.request == <span style="color:#66d9ef">null</span>) <span style="color:#66d9ef">continue</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        using(<span style="color:#66d9ef">var</span> scope = _serviceScopeFactory.CreateScope())
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">var</span> reportsService = scope.ServiceProvider.GetRequiredService&lt;IReportService&gt;();
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">var</span> mailService = scope.ServiceProvider.GetRequiredService&lt;IMailService&gt;();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">var</span> fileStream = <span style="color:#66d9ef">await</span> reportService.GenerateReport(workItem.request);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">await</span> mailService.SendReport(fileStream, workItem.email);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>In here, we&rsquo;re injecting <code>IReportGenerationQueue</code> which we use for fetching work items from the <code>ConcurrentQueue</code> collection using the <code>Dequeue</code> method, and <code>IServiceScopeFactory</code> which we use to create scoped services needed for our tasks. I won&rsquo;t go further into detail why we need to use this service scope factory approach, but I&rsquo;ll sure cover it in some other future blog post.</p>
+<p><code>ExecuteAsync</code> is invoked at the start of the background worker lifecycle and is &lsquo;stuck&rsquo; in the <code>while</code> loop running the <code>DoWorkAsync()</code> method which does all the heavy lifting. In this method we check if there are any items in our queue, if not finish the execution of the <code>DoWorkAsync()</code> method. If we do have any items in our queue, then they&rsquo;re gonna be dequeued and processed, in this case, using the <code>ReportService</code> and the <code>MailService</code>. In the end, the user receives an email containing the requested report.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>This is a lightweight approach for implementing long running tasks with a queue. Another approach in doing this would be to use some other library such as <a href="https://www.hangfire.io/">Hangfire</a> which comes with a dashboard UI but requires additional plumbing such as a SQL database.</p>
+]]></content>
+        </item>
         
         <item>
             <title>Multiple Column PostgreSQL Full Text Search</title>
