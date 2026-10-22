@@ -1212,7 +1212,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   const START_MIN = 17 * 60, SIT_MIN = 20, WALK_KMH = 4.5, HVAT = 1.8965;
   const nameOf = (s) => s.n || t('unnamed')[s.t] || t('unnamed')[''];
   const fmtKm = (m) => fmtDec(m / 1000, 2) + ' km';
-  const fmtClock = (min) => { const r = Math.round(min), m = r % (24 * 60), d = Math.floor(r / (24 * 60)); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') + (d ? t('day', d + 1) : ''); };
+  const fmtClock = (min) => { const r = Math.round(min), m = r % (24 * 60), d = Math.floor((r - START_MIN) / (24 * 60)); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') + (d ? t('day', d + 1) : ''); };
   const drinksWord = (n) => t('drinks', n);
   const birtijaWord = (n) => t('bars', n);
   const roadTxt = (s) => (s && s.charAt(0) === Engine.ROAD_CODE ? t('road')[s.slice(1)] || '' : s || '');
@@ -1715,7 +1715,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   const label = $('stopLabel'), slN = $('slN'), slT = $('slT');
   function updateLabel(st) {
     const i = st.finished ? N - 1 : (st.pausing ? st.k : st.reached - 1);
-    if (!st.started || i < 0 || !N) { label.hidden = true; return; }
+    if (!st.started || i < 0 || !N || (!isWide() && !$('ledger').hidden)) { label.hidden = true; return; }
     const s = STOPS[i]; const [x, y] = toScreen(s.x, s.y);
     const off = Math.max(5, Math.min(11, 4 + cam.s * 7)) + 6;
     setText(slN, '№ ' + (i + 1)); setText(slT, nameOf(s));
@@ -1756,7 +1756,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   scrub.addEventListener('pointerdown', () => { if (playing) { playing = false; scrubResume = true; updatePlay(); } });
   scrub.addEventListener('change', () => { if (scrubResume) { scrubResume = false; if (tl < T) { playing = true; updatePlay(); } } });
 
-  function toggleList(open) { $('ledger').hidden = !open; $('bList').setAttribute('aria-expanded', String(open)); measure(); }
+  function toggleList(open) { $('ledger').hidden = !open; $('bList').setAttribute('aria-expanded', String(open)); measure(); dirty = true; }
   $('bList').addEventListener('click', () => toggleList($('ledger').hidden));
   $('bCloseList').addEventListener('click', () => toggleList(false));
   const applyLedgerMode = () => { $('ledger').hidden = !isWide(); $('bList').setAttribute('aria-expanded', 'false'); };
