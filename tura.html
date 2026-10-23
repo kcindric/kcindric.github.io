@@ -198,6 +198,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .ledger .nm { min-width: 0; overflow-wrap: anywhere; line-height: 1.2; }
 .ledger .nm em { color: var(--muted); }
 .ledger .nm small { display: block; font-size: 0.78rem; color: var(--amber-deep); font-family: var(--font-label); letter-spacing: 0.05em; }
+.ledger .nm .rt { display: block; font-size: 0.8rem; color: var(--ink-soft); font-family: var(--font-label); letter-spacing: 0.03em; font-variant-numeric: tabular-nums; }
+.ledger .nm .rt b { color: var(--amber-deep); font-weight: 700; }
+.stop-label .r { font-family: var(--font-label); font-weight: 700; font-size: 0.8rem; color: var(--amber-deep); font-variant-numeric: tabular-nums; }
 .ledger .km { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.88rem; }
 .ledger li.done .no { background: var(--amber); color: #1d140a; }
 .ledger li.here .go { background: color-mix(in srgb, var(--amber) 22%, transparent); }
@@ -267,7 +270,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 <body>
 <canvas id="map" role="img" data-i18n-attr="aria-label:canvasAria"></canvas>
 <p class="sr-only" id="live" aria-live="polite"></p>
-<div class="stop-label" id="stopLabel" hidden><span class="n" id="slN">№ 1</span><span class="t" id="slT"></span></div>
+<div class="stop-label" id="stopLabel" hidden><span class="n" id="slN">№ 1</span><span class="t" id="slT"></span><span class="r" id="slR" hidden></span></div>
 
 <form class="pop card" id="addForm" hidden>
   <label for="addName" data-i18n="addLabel">Ime birtije koja fali</label>
@@ -1069,7 +1072,54 @@ const Engine = (() => {
     return res;
   }
 
-  return { NO_REFERRER, ROAD_CODE, setLang, makeProj, geocode, suggest, overpass, fetchCity, computeRoute, solveOpenTSP, parseBars, parseRoads, parseBack, parseBuildings, NAME_FALLBACK };
+
+  // ---------------------------------------------------------------- ocjene (vanjski popis lokala s ocjenama)
+  // Spajanje po imenu i udaljenosti: opće riječi (caffe, bar, kavana...) i ime grada se zanemaruju.
+  const GENERIC = new Set('caffe cafe caffee caffre cffe kafic kafe kava kavana coffee shop bar pub club klub lounge bistro the and i e food fun pizza night nightclub cocktail koktel pivnica beer wine vinoteka restoran restaurant snack art speciality specialty caffebar cafebar ristorante bistrot gastro sport sports'.split(' '));
+  const ratingNorm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/['’"„“”]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const nameToks = (s, extra) => ratingNorm(s).split(' ').filter((t) => t && !GENERIC.has(t) && !(extra && extra.has(t)));
+  function bigrams(s) { const o = new Map(); for (let i = 0; i < s.length - 1; i++) { const b = s.slice(i, i + 2); o.set(b, (o.get(b) || 0) + 1); } return o; }
+  function nameSim(a, b, extra) {
+    const fa = ratingNorm(a), fb = ratingNorm(b);
+    if (fa && fa === fb) return 1;
+    const ta = nameToks(a, extra), tb = nameToks(b, extra);
+    if (!ta.length || !tb.length) return 0;
+    const A = ta.join(''), B = tb.join('');
+    if (A === B) return 1;
+    const sa = new Set(ta), sb = new Set(tb);
+    const inter = [...sa].filter((t) => sb.has(t) && t.length >= 3).length;
+    const contain = inter && (inter === sa.size || inter === sb.size) ? 0.85 : 0;
+    const ba = bigrams(A), bb = bigrams(B); let m = 0, na = 0, nb = 0;
+    for (const v of ba.values()) na += v;
+    for (const v of bb.values()) nb += v;
+    for (const [k, v] of ba) m += Math.min(v, bb.get(k) || 0);
+    return Math.max(contain, na + nb ? 2 * m / (na + nb) : 0);
+  }
+  // data.p: [[lat, lon, ime, ocjena, broj], ...]  ->  Map(indeks birtije -> { r, c, n })
+  function matchRatings(md, bars, data) {
+    const out = new Map();
+    if (!data || !Array.isArray(data.p) || !bars.length) return out;
+    const proj = makeProj(md.proj.lat0, md.proj.lon0), sh = md.sheet, m = 300;
+    const places = [];
+    for (const p of data.p) { const [x, y] = proj.fwd(p[0], p[1]); if (x > sh.x0 - m && x < sh.x1 + m && y > sh.y0 - m && y < sh.y1 + m) places.push({ x, y, n: p[2], r: p[3], c: p[4] }); }
+    if (!places.length) return out;
+    const extra = new Set(nameToks(md.city && md.city.name));
+    const pairs = [];
+    bars.forEach((b, i) => {
+      for (let j = 0; j < places.length; j++) {
+        const p = places[j], d = Math.hypot(b.x - p.x, b.y - p.y);
+        if (d > 250) continue;
+        const s = nameSim(b.n, p.n, extra);
+        if ((s >= 0.8) || (s >= 0.55 && d <= 120) || (s >= 0.4 && d <= 45) || (!b.n && d <= 12)) pairs.push({ i, j, s, d });
+      }
+    });
+    pairs.sort((a, b) => b.s - a.s || a.d - b.d);
+    const usedP = new Set();
+    for (const q of pairs) { if (out.has(q.i) || usedP.has(q.j)) continue; usedP.add(q.j); const p = places[q.j]; out.set(q.i, { r: p.r, c: p.c, n: p.n }); }
+    return out;
+  }
+
+  return { NO_REFERRER, ROAD_CODE, setLang, makeProj, matchRatings, nameSim, geocode, suggest, overpass, fetchCity, computeRoute, solveOpenTSP, parseBars, parseRoads, parseBack, parseBuildings, NAME_FALLBACK };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
 
@@ -1137,6 +1187,9 @@ if (typeof module !== 'undefined') module.exports = Engine;
       },
       kind: { city: 'grad', town: 'grad', village: 'selo', suburb: 'kvart', hamlet: 'zaselak', municipality: 'općina', quarter: 'četvrt', neighbourhood: 'naselje' },
       sugFoot: 'Prijedlozi: Photon · OpenStreetMap',
+      ratingWord: (c) => plHr(c, 'ocjena', 'ocjene', 'ocjena'), ratingAria: (r) => 'Google ocjena ' + r,
+      noteRatings: (n, m, d) => ' Ocjene s Google karata (stanje ' + d + '): ' + n + ' od ' + m + ' na ovoj karti.',
+      date: (y, m, d) => d + '. ' + m + '. ' + y + '.',
     },
     en: {
       dec: '.', title: 'Bar Crawl',
@@ -1185,6 +1238,9 @@ if (typeof module !== 'undefined') module.exports = Engine;
       },
       kind: { city: 'city', town: 'town', village: 'village', suburb: 'suburb', hamlet: 'hamlet', municipality: 'municipality', quarter: 'quarter', neighbourhood: 'neighbourhood' },
       sugFoot: 'Suggestions: Photon · OpenStreetMap',
+      ratingWord: (c) => (c === 1 ? 'rating' : 'ratings'), ratingAria: (r) => 'Google rating ' + r,
+      noteRatings: (n, m, d) => ' Google Maps ratings (as of ' + d + '): ' + n + ' of ' + m + ' on this map.',
+      date: (y, m, d) => d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1] + ' ' + y,
     },
   };
   const LANGS = ['hr', 'en'];
@@ -1215,6 +1271,9 @@ if (typeof module !== 'undefined') module.exports = Engine;
   const fmtClock = (min) => { const r = Math.round(min), m = r % (24 * 60), d = Math.floor((r - START_MIN) / (24 * 60)); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') + (d ? t('day', d + 1) : ''); };
   const drinksWord = (n) => t('drinks', n);
   const birtijaWord = (n) => t('bars', n);
+  const fmtCount = (c) => { try { return c.toLocaleString(LANG === 'hr' ? 'hr-HR' : 'en-GB'); } catch (e) { return String(c); } };
+  const starOf = (s) => (s && s.g ? ' · ★ ' + fmtDec(s.g.r, 1) : '');
+  const fmtIsoDate = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? t('date', +m[1], +m[2], +m[3]) : ''; };
   const roadTxt = (s) => (s && s.charAt(0) === Engine.ROAD_CODE ? t('road')[s.slice(1)] || '' : s || '');
   const setText = (el, v) => { if (el.textContent !== v) el.textContent = v; };
 
@@ -1313,7 +1372,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     BARS = bars; RR = rr;
     STOPS = rr.stops.map((s) => {
       const b = bars[s.bar], sn = rr.snap[s.bar];
-      return { n: b.n, t: b.t, x: b.x, y: b.y, sx: sn ? sn.sx : b.x, sy: sn ? sn.sy : b.y, i: s.idx, d: s.d, st: rr.roadName(s.bar), k: b.k, src: b.src };
+      return { n: b.n, t: b.t, x: b.x, y: b.y, sx: sn ? sn.sx : b.x, sy: sn ? sn.sy : b.y, i: s.idx, d: s.d, st: rr.roadName(s.bar), k: b.k, src: b.src, bi: s.bar, g: null };
     });
     N = STOPS.length;
     RX = []; RY = [];
@@ -1354,11 +1413,23 @@ if (typeof module !== 'undefined') module.exports = Engine;
     if (x1 - x0 < 300) { const c = (x0 + x1) / 2; x0 = c - 150; x1 = c + 150; }
     if (y1 - y0 < 300) { const c = (y0 + y1) / 2; y0 = c - 150; y1 = c + 150; }
     ROUTE_BOX = { x0, y0, x1, y1 };
+    applyRatings();
     buildLedger(); buildTicks(); updateCartouche(); updateNote();
     lastHud = ''; lastReached = -1; lastHere = -2;
     if (!N) emptyHud();
     dirty = true;
   }
+  // ocjene: zaseban statični popis uz stranicu; bez njega (npr. datoteka s diska) karta radi kao prije
+  let RATINGS = null, RMATCH = new Map();
+  function applyRatings() {
+    RMATCH = RATINGS && MD ? Engine.matchRatings(MD, BARS, RATINGS) : new Map();
+    for (const s of STOPS) s.g = RMATCH.get(s.bi) || null;
+  }
+  fetch('tura-ocjene.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
+    if (!j || !Array.isArray(j.p)) return;
+    RATINGS = j;
+    if (MD && RR) { applyRatings(); buildLedger(); updateNote(); lastHud = ''; lastReached = -1; lastHere = -2; dirty = true; }
+  });
   function emptyHud() { setText(hud.num, '0'); setText(hud.state, t('emptyState')); setText(hud.place, t('emptyPlace')); setText(hud.street, t('emptyStreet')); }
 
   function segIndex(s) {
@@ -1657,6 +1728,8 @@ if (typeof module !== 'undefined') module.exports = Engine;
       txt = t('noteCity', km, MD.bars.length, MD.found || MD.bars.length);
     }
     if (edits) txt += t('noteEdits') + (e.add.length ? '+' + e.add.length : '') + (e.add.length && e.del.length ? ', ' : '') + (e.del.length ? '−' + e.del.length : '') + '.';
+    const rated = STOPS.filter((q) => q.g).length;
+    if (rated && RATINGS) txt += t('noteRatings', rated, N, fmtIsoDate(RATINGS.date));
     if (RR && RR.dropped.length) txt += t('noteDropped') + RR.dropped.map((i) => nameOf(BARS[i])).join(', ') + '.';
     setText($('note'), txt);
     $('bReset').hidden = !edits;
@@ -1670,9 +1743,10 @@ if (typeof module !== 'undefined') module.exports = Engine;
       const nm = document.createElement('span'); nm.className = 'nm';
       if (s.n) nm.textContent = s.n; else { const em = document.createElement('em'); em.textContent = nameOf(s); nm.appendChild(em); }
       if (s.src) { const sm = document.createElement('small'); sm.textContent = s.src === 'google' ? t('srcGoogle') : t('srcHand'); nm.appendChild(sm); }
+      if (s.g) { const rt = document.createElement('small'); rt.className = 'rt'; const st = document.createElement('b'); st.textContent = '★ ' + fmtDec(s.g.r, 1); rt.append(st, ' · ' + fmtCount(s.g.c) + ' ' + t('ratingWord', s.g.c)); nm.appendChild(rt); }
       const km = document.createElement('span'); km.className = 'km'; km.textContent = fmtKm(SD[i]);
       b.append(no, nm, km);
-      b.setAttribute('aria-label', t('stopAria', i + 1, nameOf(s), fmtKm(SD[i])));
+      b.setAttribute('aria-label', t('stopAria', i + 1, nameOf(s), fmtKm(SD[i])) + (s.g ? ', ' + t('ratingAria', fmtDec(s.g.r, 1)) : ''));
       b.addEventListener('click', () => { tl = arriveAt[i] + 0.001; playing = false; if (camMode !== 'follow') setCamMode('follow'); updatePlay(); dirty = true; if (!isWide()) toggleList(false); });
       const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.textContent = '×';
       del.setAttribute('aria-label', t('delAria', nameOf(s)));
@@ -1693,10 +1767,10 @@ if (typeof module !== 'undefined') module.exports = Engine;
     const walkedMin = st.s / (WALK_KMH * 1000) * 60;
     const clock = START_MIN + walkedMin + SIT_MIN * Math.min(N, st.done);
     let eyebrow, place, street;
-    if (!st.started) { eyebrow = t('hStart'); place = nameOf(STOPS[0]); street = roadTxt(STOPS[0].st); }
+    if (!st.started) { eyebrow = t('hStart') + starOf(STOPS[0]); place = nameOf(STOPS[0]); street = roadTxt(STOPS[0].st); }
     else if (st.finished) { eyebrow = t('hEnd'); place = N === 1 ? t('hOnly') : t('hAll', N, birtijaWord(N)); street = t('hHome', fmtClock(clock)); }
-    else if (st.pausing) { eyebrow = t('hAt', st.k + 1); place = nameOf(STOPS[st.k]); street = roadTxt(STOPS[st.k].st); }
-    else { eyebrow = t('hTo', st.k + 1); place = nameOf(STOPS[st.k]); const i = segIndex(st.s) + 1; street = roadTxt(RR.streets[RR.rn[Math.min(RR.rn.length - 1, i)]]); }
+    else if (st.pausing) { eyebrow = t('hAt', st.k + 1) + starOf(STOPS[st.k]); place = nameOf(STOPS[st.k]); street = roadTxt(STOPS[st.k].st); }
+    else { eyebrow = t('hTo', st.k + 1) + starOf(STOPS[st.k]); place = nameOf(STOPS[st.k]); const i = segIndex(st.s) + 1; street = roadTxt(RR.streets[RR.rn[Math.min(RR.rn.length - 1, i)]]); }
     const key = [st.reached, eyebrow, place, street, Math.floor(st.s / 10), Math.floor(clock)].join('|');
     if (key === lastHud) return;
     lastHud = key;
@@ -1712,13 +1786,13 @@ if (typeof module !== 'undefined') module.exports = Engine;
       lastReached = st.reached; lastHere = here;
     }
   }
-  const label = $('stopLabel'), slN = $('slN'), slT = $('slT');
+  const label = $('stopLabel'), slN = $('slN'), slT = $('slT'), slR = $('slR');
   function updateLabel(st) {
     const i = st.finished ? N - 1 : (st.pausing ? st.k : st.reached - 1);
     if (!st.started || i < 0 || !N || (!isWide() && !$('ledger').hidden)) { label.hidden = true; return; }
     const s = STOPS[i]; const [x, y] = toScreen(s.x, s.y);
     const off = Math.max(5, Math.min(11, 4 + cam.s * 7)) + 6;
-    setText(slN, '№ ' + (i + 1)); setText(slT, nameOf(s));
+    setText(slN, '№ ' + (i + 1)); setText(slT, nameOf(s)); setText(slR, s.g ? '★ ' + fmtDec(s.g.r, 1) : ''); slR.hidden = !s.g;
     label.hidden = false;
     const w = label.offsetWidth, h = label.offsetHeight;
     const left = Math.max(8, Math.min(W - w - 8, x - w / 2)), top = y - off - h;
