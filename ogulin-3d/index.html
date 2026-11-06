@@ -497,27 +497,46 @@ let bMesh=null,brMesh=null,landmark=null,monuments=null;
 const LM_BOX=[[399923,5014954,46,40,30],[399971.5,5014752.7,113.6,42,24],[400411,5014759.7,-35.2,86,20]];
 function inLandmark(E,N){for(const [e,n,a,L,W] of LM_BOX){const t=a*Math.PI/180,dx=E-e,dy=N-n;
   if(Math.abs(dx*Math.cos(t)+dy*Math.sin(t))<L/2&&Math.abs(-dx*Math.sin(t)+dy*Math.cos(t))<W/2)return true}return false}
+// Footprints come from the DGU cadastre (clean walls and right angles); heights and roof planes from the LiDAR.
+// Each roof is the lowest of its fitted planes over the footprint, so gables, hips and sheds fall out of the same rule.
+const FACADE=["#ece4d6","#efe3cc","#e6e1d8","#eedccb","#e3e0da","#f0e8da","#e7d8c6","#e9e0d2"].map(h=>new THREE.Color(h));
+function clipHalf(poly,fa,fb,fc){const out=[];const f=p=>fa+fb*p[0]+fc*p[1];
+  for(let i=0;i<poly.length;i++){const p=poly[i],q=poly[(i+1)%poly.length],fp=f(p),fq=f(q);
+    if(fp<=0)out.push(p);if((fp<0&&fq>0)||(fp>0&&fq<0)){const t=fp/(fp-fq);out.push([p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t])}}
+  return out}
 function buildBuildings(B){
-  const P=[],C=[];const X=x=>x/1000-HALF,Z=y=>y/1000-HALF;
-  const push=(p,y,c)=>{P.push(X(p[0]),y/1000,Z(p[1]));C.push(c.r,c.g,c.b)};
-  const tri=(a,ya,b,yb,c,yc,col)=>{push(a,ya,col);push(b,yb,col);push(c,yc,col)};
-  for(const b of B.buildings){const g=b[0]/10,eave=b[1]/10,ridge=b[2]/10,typ=b[3];
-    const rings=b.slice(5).map(r=>{const a=[];for(let i=0;i<r.length;i+=2)a.push([r[i]*0.5,r[i+1]*0.5]);return a});
-    const R=rings[0];let cx=0,cy=0;R.forEach(p=>{cx+=p[0];cy+=p[1]});cx/=R.length;cy/=R.length;
+  const P=[],C=[];const PW=(x,y,z)=>[x/1000-HALF,y/1000,z/1000-HALF];
+  const push=(w,y,c)=>{const v=PW(w[0],y,w[1]);P.push(v[0],v[1],v[2]);C.push(c.r,c.g,c.b)};
+  for(const b of B.buildings){
+    const g=b[0]/10,cx=b[1]*0.5,cy=b[2]*0.5,ang=b[3]*Math.PI/180,np=b[4];
     if(inLandmark(E0+cx,N1-cy))continue;
-    const roof=new THREE.Color(b[4]).multiplyScalar(1.1);
-    const yb=g-1,ye=g+eave,yr=g+ridge;
-    for(const ring of rings)for(let i=0;i<ring.length;i++){const p=ring[i],q=ring[(i+1)%ring.length];
-      tri(p,yb,q,yb,q,ye,cWall);tri(p,yb,q,ye,p,ye,cWall)}
-    if(typ===1&&R.length===4){let [a,b2,c,d]=R;const len=(u,v)=>Math.hypot(u[0]-v[0],u[1]-v[1]);
-      if(len(b2,c)>len(a,b2))[a,b2,c,d]=[b2,c,d,a];
-      const mid=(u,v)=>[(u[0]+v[0])/2,(u[1]+v[1])/2];const r0=mid(d,a),r1=mid(b2,c);
-      tri(a,ye,b2,ye,r1,yr,roof);tri(a,ye,r1,yr,r0,yr,roof);
-      tri(c,ye,d,ye,r0,yr,roof);tri(c,ye,r0,yr,r1,yr,roof);
-      tri(b2,ye,c,ye,r1,yr,cWall);tri(d,ye,a,ye,r0,yr,cWall)}
-    else{const pts=rings.map(r=>r.map(p=>new THREE.Vector2(p[0],p[1])));let f=[];
-      try{f=THREE.ShapeUtils.triangulateShape(pts[0],pts.slice(1))}catch(e){}
-      const all=[].concat(...pts);for(const t of f)tri([all[t[0]].x,all[t[0]].y],ye,[all[t[1]].x,all[t[1]].y],ye,[all[t[2]].x,all[t[2]].y],ye,roof)}
+    const pl=[];for(let i=0;i<np;i++)pl.push([b[5+i*3],b[6+i*3],b[7+i*3]]);
+    const roof=new THREE.Color(b[5+np*3]).multiplyScalar(1.08);
+    const rings=b.slice(6+np*3).map(r=>{const a=[];for(let i=0;i<r.length;i+=2)a.push([r[i]*0.5,r[i+1]*0.5]);return a});
+    const ux=Math.cos(ang),uy=Math.sin(ang);
+    const toL=p=>[(p[0]-cx)*ux+(p[1]-cy)*uy,-(p[0]-cx)*uy+(p[1]-cy)*ux];
+    const toW=q=>[cx+q[0]*ux-q[1]*uy,cy+q[0]*uy+q[1]*ux];
+    const f=q=>{let m=1e9;for(const Q of pl)m=Math.min(m,Q[0]+Q[1]*q[0]+Q[2]*q[1]);return Math.min(60,Math.max(2.2,m))};
+    let hh=0;for(const ch of String(b[1]*31+b[2]*17))hh=(hh*31+ch.charCodeAt(0))>>>0;const fac=FACADE[hh%FACADE.length];
+    const yb=g-1.5;
+    // walls, split where the roof plane above them changes so gable ends come out triangular
+    for(const ring of rings)for(let i=0;i<ring.length;i++){const p=toL(ring[i]),q=toL(ring[(i+1)%ring.length]);const ts=[0,1];
+      for(let m=0;m<pl.length;m++)for(let n=m+1;n<pl.length;n++){
+        const d0=(pl[m][0]-pl[n][0])+(pl[m][1]-pl[n][1])*p[0]+(pl[m][2]-pl[n][2])*p[1],d1=(pl[m][0]-pl[n][0])+(pl[m][1]-pl[n][1])*q[0]+(pl[m][2]-pl[n][2])*q[1];
+        if(d0*d1<0)ts.push(d0/(d0-d1))}
+      ts.sort((x,y)=>x-y);
+      for(let k=0;k<ts.length-1;k++){const a=[p[0]+(q[0]-p[0])*ts[k],p[1]+(q[1]-p[1])*ts[k]],c=[p[0]+(q[0]-p[0])*ts[k+1],p[1]+(q[1]-p[1])*ts[k+1]];
+        const wa=toW(a),wc=toW(c),ha=g+f(a),hc=g+f(c);
+        push(wa,yb,fac);push(wc,yb,fac);push(wc,hc,fac);push(wa,yb,fac);push(wc,hc,fac);push(wa,ha,fac)}}
+    // roof: one face per plane, clipped to where that plane is the lowest
+    const outer=rings[0].map(toL);
+    for(let i=0;i<pl.length;i++){let poly=outer.slice();
+      for(let j=0;j<pl.length&&poly.length>=3;j++){if(j===i)continue;poly=clipHalf(poly,pl[i][0]-pl[j][0],pl[i][1]-pl[j][1],pl[i][2]-pl[j][2])}
+      if(poly.length<3)continue;
+      const holes=pl.length===1?rings.slice(1).map(r=>r.map(toL).map(q=>new THREE.Vector2(q[0],q[1]))):[];
+      const pts=poly.map(q=>new THREE.Vector2(q[0],q[1]));let tri=[];try{tri=THREE.ShapeUtils.triangulateShape(pts,holes)}catch(e){}
+      const all=pts.concat(...holes);
+      for(const t of tri)for(const k of t){const q=all[k];push(toW([q.x,q.y]),g+f([q.x,q.y])+0.05,roof)}}
   }
   const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(P,3));geo.setAttribute("color",new THREE.Float32BufferAttribute(C,3));geo.computeVertexNormals();
   bMesh=new THREE.Mesh(geo,bldMat);world.add(bMesh);
@@ -915,7 +934,7 @@ if(innerWidth<760){st.q=QUAL.light;$("q").value="light";renderer.setPixelRatio(1
 updateSun();
 
 // ---------------- start
-Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);res()},undefined,()=>res())),decodeMain("t/l0.png"),fetch("buildings.json").then(r=>r.json()),fetch("bridges.json").then(r=>r.json()),fetch("roads.json").then(r=>r.json()),fetch("trails.json").then(r=>r.json()).catch(()=>null)]).then(([_o,l0,bl,bv,rd,trl])=>{
+Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);res()},undefined,()=>res())),decodeMain("t/l0.png"),fetch("buildings_dgu.json").then(r=>r.json()),fetch("bridges.json").then(r=>r.json()),fetch("roads.json").then(r=>r.json()),fetch("trails.json").then(r=>r.json()).catch(()=>null)]).then(([_o,l0,bl,bv,rd,trl])=>{
   L0=l0;tileStats();prepRoads(rd);buildBase();
   if(trl)prepTrails(trl);workerInit.msg={type:"init",base,roads:ROADS.map(r=>({c:r.c,raw:r.raw,bx0:r.bx0,bx1:r.bx1,by0:r.by0,by1:r.by1})).concat(trailsForWorker())};worker.postMessage(workerInit.msg);
   buildBuildings(bl);buildSmallBridges(bv);landmark=buildLandmark();world.add(landmark);monuments=buildMonuments();world.add(monuments);buildRoads();buildTrails();drawMiniBase();
