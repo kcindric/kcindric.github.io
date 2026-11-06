@@ -90,6 +90,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .bar{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
 @media (max-width:760px){
+  #tc{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;min-width:0;max-width:none;z-index:6}
   #tl h1{font-size:22px} #tl{padding:10px 12px}
   #menu{display:block;position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:8px 12px;font-weight:600;cursor:pointer;color:var(--fg)}
   #tr{display:none;top:calc(60px + env(safe-area-inset-top,0px));max-height:calc(100% - 300px)}
@@ -866,9 +867,16 @@ canvas.addEventListener("pointermove",ev=>{const now=performance.now();if(now-ho
   $("r-elev").textContent=`${Math.round(g)} m a.s.l.`;$("r-what").textContent=what;
   const [la,lo]=toLatLon(E,N);$("r-coord").textContent=`${la.toFixed(5)}° N  ${lo.toFixed(5)}° E`;});
 // click on a red trail for its details
-let downAt=null;canvas.addEventListener("pointerdown",ev=>{downAt=[ev.clientX,ev.clientY]});
-canvas.addEventListener("click",ev=>{if(!TRAILS||!st.trails||!downAt||Math.hypot(ev.clientX-downAt[0],ev.clientY-downAt[1])>5)return;const h=pick(ev);if(!h)return;
-  const E=E0+(h.point.x+HALF)*1000,N=N1-(h.point.z+HALF)*1000;const tol=Math.max(5,camera.position.distanceTo(h.point)*1000*0.018);
+// taps are detected from pointer events: on phones the orbit controls cancel the browser's synthetic click
+let tap=null,downN=0;
+canvas.addEventListener("pointerdown",ev=>{downN++;tap=downN===1?{x:ev.clientX,y:ev.clientY,t:performance.now(),touch:ev.pointerType!=="mouse"}:null});
+const endPtr=()=>{downN=Math.max(0,downN-1)};
+canvas.addEventListener("pointercancel",()=>{endPtr();tap=null});
+canvas.addEventListener("pointerup",ev=>{endPtr();const t=tap;tap=null;
+  if(!t||!TRAILS||!st.trails)return;const slop=t.touch?12:5;
+  if(Math.hypot(ev.clientX-t.x,ev.clientY-t.y)>slop||performance.now()-t.t>(t.touch?600:1500))return;
+  const h=pick(ev);if(!h)return;
+  const E=E0+(h.point.x+HALF)*1000,N=N1-(h.point.z+HALF)*1000;const tol=Math.max(t.touch?10:5,camera.position.distanceTo(h.point)*1000*(t.touch?0.035:0.018));
   const ti=nearestTrail(E,N,tol);if(ti>=0)showTrail(ti);else if(trailSel>=0)showTrail(-1)});
 canvas.addEventListener("dblclick",ev=>{const h=pick(ev);if(!h)return;const d=Math.max(0.08,camera.position.distanceTo(h.point)*0.45);
   const dir=camera.position.clone().sub(controls.target).normalize();flyTo({tgt:h.point.clone(),cam:h.point.clone().add(dir.multiplyScalar(d))},900)});
