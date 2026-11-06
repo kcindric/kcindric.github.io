@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<meta name="description" content="Interaktivni 3D model Ogulina, Kleka, kanjona Dobre i Sabljaka iz LiDAR podataka DGU-a, s ortofotom i planinarskim stazama.">
+<meta name="description" content="Interaktivni 3D model Ogulina, Kleka, kanjona Dobre i Sabljaka iz LiDAR podataka DGU-a, s ortofotom, planinarskim stazama i pretragom adresa.">
 <meta property="og:title" content="Ogulin 3D (beta)">
-<meta property="og:description" content="Interaktivni 3D model Ogulina, Kleka, kanjona Dobre i Sabljaka iz LiDAR podataka DGU-a, s ortofotom i planinarskim stazama.">
+<meta property="og:description" content="Interaktivni 3D model Ogulina, Kleka, kanjona Dobre i Sabljaka iz LiDAR podataka DGU-a, s ortofotom, planinarskim stazama i pretragom adresa.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.kcindric.me/ogulin-3d/">
 <meta property="og:image" content="https://www.kcindric.me/ogulin-3d/og.jpg">
@@ -37,6 +37,18 @@ body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:1
 #tl{left:max(16px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:12px 14px;max-width:min(330px,calc(100vw - 32px))}
 #tl h1{margin:0;font-size:28px;line-height:1;font-weight:700}
 #tl .sub{margin-top:4px;font-family:var(--font-data);font-size:11px;color:var(--muted)}
+.search{position:relative;margin-top:10px}
+#s-in{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--fg)}
+#s-in::placeholder{color:var(--muted)}
+#s-list{position:absolute;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;background:var(--panel);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:6;max-height:min(320px,55vh);overflow:auto}
+#s-list li{padding:6px 8px;border-radius:6px;cursor:pointer;display:grid;gap:1px;min-width:0}
+#s-list li b{font-weight:600;font-size:14px;overflow-wrap:anywhere}#s-list li span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+#s-list li[aria-selected="true"],#s-list li:hover{background:var(--chip);outline:1px solid var(--line)}
+#s-list li.s-note{color:var(--muted);font-size:12px;cursor:default;background:none;outline:0}
+#pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:3}
+#pin .tag{pointer-events:auto;display:flex;gap:4px;align-items:center;background:var(--panel);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:6px;padding:3px 3px 3px 8px;font-size:13px;font-weight:600;box-shadow:var(--shadow);white-space:nowrap;color:var(--fg)}
+#pin-x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 5px}
+#pin i{width:16px;height:16px;background:#e0241b;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);margin:5px 0 3px;box-shadow:0 1px 3px rgba(0,0,0,.5)}
 .places{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 button{font:inherit}
 .chipbtn{font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:999px;padding:5px 11px;cursor:pointer}
@@ -94,6 +106,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   <canvas id="c" tabindex="0" aria-label="3D landscape of Ogulin, Klek and Lake Sabljaci. Drag to rotate, scroll to zoom, double-click to fly closer."></canvas>
   <div id="labels"></div>
   <div id="pois"></div>
+  <div id="pin" hidden><div class="tag"><span></span><button id="pin-x" type="button" aria-label="Remove the marker">×</button></div><i></i></div>
   <section class="panel" id="tc" hidden aria-live="polite">
     <button id="tc-x" type="button" aria-label="Close trail details">×</button>
     <h2 id="tc-name"></h2><div class="k" id="tc-kind"></div>
@@ -104,6 +117,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   <div class="panel" id="tl">
     <h1>Ogulin 3D <small style="font-size:.5em;font-weight:600;letter-spacing:.06em;color:var(--accent);vertical-align:middle">BETA</small></h1>
     <div class="sub">Klek · Dobra · Đulin ponor · Sabljaci</div>
+    <div class="search"><input id="s-in" type="search" placeholder="Search an address, peak or trail" aria-label="Search an address, peak or trail" role="combobox" aria-expanded="false" aria-controls="s-list" aria-autocomplete="list" autocomplete="off" spellcheck="false"><ul id="s-list" role="listbox" hidden></ul></div>
     <nav class="places" aria-label="Places">
       <button class="chipbtn" data-place="overview">Whole valley</button>
       <button class="chipbtn" data-place="ogulin">Ogulin</button>
@@ -766,6 +780,69 @@ function go(key){const p=PLACES[key];if(!p||!L0)return;flyTo(viewFrom(toX(p.e),p
 document.querySelectorAll("[data-place]").forEach(b=>b.onclick=()=>go(b.dataset.place));
 addEventListener("hashchange",()=>{const k=location.hash.slice(1);if(PLACES[k])go(k)});
 
+// ---------------- search: places, peaks and trails in the model, plus street addresses from OpenStreetMap (Photon)
+// WGS84 -> HTRS96/TM (GRS80, central meridian 16.5°, k0 0.9999, false easting 500 km)
+function fromLatLon(lat,lon){const a=6378137,f=1/298.257222101,e2=f*(2-f),k0=0.9999,ep2=e2/(1-e2);
+  const p=lat*Math.PI/180,l=(lon-16.5)*Math.PI/180,N=a/Math.sqrt(1-e2*Math.sin(p)**2),T=Math.tan(p)**2,C=ep2*Math.cos(p)**2,A=Math.cos(p)*l;
+  const M=a*((1-e2/4-3*e2*e2/64-5*e2**3/256)*p-(3*e2/8+3*e2*e2/32+45*e2**3/1024)*Math.sin(2*p)+(15*e2*e2/256+45*e2**3/1024)*Math.sin(4*p)-(35*e2**3/3072)*Math.sin(6*p));
+  const E=500000+k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120);
+  const No=k0*(M+N*Math.tan(p)*(A*A/2+(5-T+9*C+4*C*C)*A**4/24+(61-58*T+T*T+600*C-330*ep2)*A**6/720));return [E,No]}
+const inModel=(E,N)=>E>E0+20&&E<E0+KM*1000-20&&N<N1-20&&N>N1-KM*1000+20;
+const fold=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d");
+let localIdx=null;
+function buildLocalIdx(){localIdx=[];
+  for(const [k,p] of Object.entries(PLACES))if(p.label)localIdx.push({name:p.label[0],kind:"Place",E:p.e,N:p.n,place:k});
+  for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost"}[p[0]]||"Point";
+    localIdx.push({name:p[1],kind:kind+(p[2]!=null&&p[0]==="peak"?` · ${p[2]} m`:""),E:E0+p[3]*0.5,N:N1-p[4]*0.5})}
+  if(TRAILS)TRAILS.forEach((t,ti)=>{if(!t.name||t.k==="path")return;const l=t.lines[0].d,m=l[Math.floor(l.length/2)];
+    localIdx.push({name:t.name,kind:"Trail"+(t.ref?" · "+t.ref:""),E:E0+m[0],N:N1-m[1],trail:ti})});
+  const seen=new Set();localIdx=localIdx.filter(x=>{const k=fold(x.name)+x.kind;if(seen.has(k))return false;seen.add(k);return true})}
+function searchLocal(q){if(!localIdx)buildLocalIdx();const f=fold(q);return localIdx.filter(x=>fold(x.name).includes(f))
+  .sort((a,b)=>fold(a.name).indexOf(f)-fold(b.name).indexOf(f)||a.name.length-b.name.length).slice(0,5)}
+let geoCtl=null,geoOk=true;
+async function searchAddress(q){if(!geoOk)return [];if(geoCtl)geoCtl.abort();geoCtl=new AbortController();
+  const [la0,lo0]=toLatLon(E0,N1-KM*1000),[la1,lo1]=toLatLon(E0+KM*1000,N1);
+  const url=`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&bbox=${lo0.toFixed(4)},${la0.toFixed(4)},${lo1.toFixed(4)},${la1.toFixed(4)}&lat=45.266&lon=15.228`;
+  try{const r=await fetch(url,{signal:geoCtl.signal});if(!r.ok)return [];const j=await r.json();
+    return j.features.map(f=>{const P=f.properties,[lon,lat]=f.geometry.coordinates,[E,N]=fromLatLon(lat,lon);
+      const street=P.street?(P.street+(P.housenumber?" "+P.housenumber:"")):"";
+      const name=P.name||(P.housenumber&&P.street?street:P.street)||"";
+      const where=[P.name&&street&&street!==name?street:"",P.city||P.town||P.village||P.locality||P.district].filter(Boolean).join(", ");
+      return {name,kind:where||"Address",E,N,addr:true}}).filter(x=>x.name&&inModel(x.E,x.N))}
+  catch(e){if(e.name!=="AbortError")geoOk=false;return []}}   // blocked or offline: keep searching the model only
+const sIn=$("s-in"),sList=$("s-list");let sItems=[],sActive=-1,sTimer=0,sSeq=0;
+function renderResults(note){sList.textContent="";
+  sItems.forEach((it,i)=>{const li=document.createElement("li");li.id="s-opt-"+i;li.setAttribute("role","option");li.setAttribute("aria-selected",i===sActive);
+    li.innerHTML=`<b></b><span></span>`;li.firstChild.textContent=it.name;li.lastChild.textContent=it.kind;
+    li.onmousedown=e=>{e.preventDefault();pickResult(i)};sList.appendChild(li)});
+  if(note){const li=document.createElement("li");li.className="s-note";li.textContent=note;sList.appendChild(li)}
+  const open=sItems.length>0||!!note;sList.hidden=!open;sIn.setAttribute("aria-expanded",open);
+  if(sActive>=0)sIn.setAttribute("aria-activedescendant","s-opt-"+sActive);else sIn.removeAttribute("aria-activedescendant")}
+async function runSearch(){const q=sIn.value.trim();const seq=++sSeq;if(q.length<2){sItems=[];renderResults();return}
+  sItems=searchLocal(q);sActive=sItems.length?0:-1;renderResults(q.length>=3&&geoOk?"Searching addresses…":"");
+  if(q.length<3||!geoOk){if(!sItems.length)renderResults(geoOk?"":"No match in the model. Address search needs the online version.");return}
+  const adr=await searchAddress(q);if(seq!==sSeq)return;
+  const have=new Set(sItems.map(x=>fold(x.name)));sItems=sItems.concat(adr.filter(x=>!have.has(fold(x.name)))).slice(0,9);
+  sActive=sItems.length?Math.max(0,sActive):-1;renderResults(sItems.length?"":"Nothing found inside the 11 × 11 km model.")}
+function pickResult(i){const it=sItems[i];if(!it)return;sList.hidden=true;sIn.setAttribute("aria-expanded","false");sIn.value=it.name;
+  if(it.place){go(it.place);return}
+  document.querySelectorAll("[data-place]").forEach(b=>b.setAttribute("aria-current","false"));
+  setPin(it);if(it.trail!=null)showTrail(it.trail);
+  const y=sample(it.E,it.N,false)/1000*st.ex;const cp=camera.position.clone().sub(controls.target);const h=Math.atan2(cp.x,cp.z)*180/Math.PI;
+  flyTo(viewFrom(toX(it.E),y,toZ(it.N),it.addr?0.32:0.9,h,it.addr?32:30))}
+sIn.addEventListener("input",()=>{clearTimeout(sTimer);sTimer=setTimeout(runSearch,300)});
+sIn.addEventListener("keydown",e=>{if(e.key==="ArrowDown"||e.key==="ArrowUp"){if(!sItems.length)return;e.preventDefault();sActive=(sActive+(e.key==="ArrowDown"?1:-1)+sItems.length)%sItems.length;renderResults()}
+  else if(e.key==="Enter"){e.preventDefault();clearTimeout(sTimer);if(sActive>=0&&!sList.hidden)pickResult(sActive);else runSearch()}
+  else if(e.key==="Escape"){sList.hidden=true;sIn.setAttribute("aria-expanded","false")}});
+sIn.addEventListener("blur",()=>setTimeout(()=>{sList.hidden=true;sIn.setAttribute("aria-expanded","false")},120));
+sIn.addEventListener("focus",()=>{if(sItems.length)renderResults()});
+// the found spot is marked with a pin; it stays until the next search
+const pinEl=$("pin");let pinAt=null;
+function setPin(it){pinAt=it;pinEl.querySelector("span").textContent=it.name;pinEl.hidden=false}
+function placePin(){if(!pinAt||!L0){pinEl.hidden=true;return}pv.set(toX(pinAt.E),(sample(pinAt.E,pinAt.N,false)+1)/1000*st.ex,toZ(pinAt.N));pv.project(camera);
+  if(pv.z>1||Math.abs(pv.x)>1.05||Math.abs(pv.y)>1.05){pinEl.hidden=true;return}pinEl.hidden=false;pinEl.style.left=((pv.x+1)/2*innerWidth)+"px";pinEl.style.top=((1-pv.y)/2*innerHeight)+"px"}
+$("pin-x").onclick=()=>{pinAt=null;pinEl.hidden=true;sIn.value=""};
+
 // ---------------- pointer readout + double-click to fly
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let hoverT=0;
 // ray-march against the height data (fast, no triangle tests)
@@ -848,7 +925,7 @@ Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);re
   schedule(now);applyUpload();
   if(roadsDirty&&now-lastRoads>2500&&!uploads.length){lastRoads=now;buildRoads();trailsDirty=true}
   if(TRAILS&&st.trails&&trailSel>=0&&now-lastTrails>400&&!uploads.length&&(trailsDirty||trailSelWidthChanged())){lastTrails=now;buildTrails()}
-  renderer.render(scene,camera);placeLabels();placePois();drawMini();
+  renderer.render(scene,camera);placeLabels();placePois();placePin();drawMini();
 })(0);
 })();
 </script>
