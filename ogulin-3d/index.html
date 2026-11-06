@@ -78,6 +78,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .lbl small{font-family:var(--font-data);font-weight:400;font-size:11px;opacity:.9}
 .poi{position:absolute;transform:translate(-50%,-100%);pointer-events:none;white-space:nowrap;font-size:11.5px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.6)}
 .poi i{font-style:normal;color:#ff5a4f;margin-right:3px}.poi small{font-family:var(--font-data);font-weight:400;opacity:.9}
+.poi-village{font-size:13.5px;font-weight:700;letter-spacing:.02em}.poi-hamlet{font-size:11.5px;font-weight:600;opacity:.92}
 .poi-hut i,.poi-shelter i{color:#ffd23a}.poi-view i{color:#9fe0ff}
 #tc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
 #tc h2{margin:0 26px 2px 0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}#tc h2::before{content:"";flex:none;width:14px;height:4px;border-radius:2px;background:#e0241b}
@@ -167,7 +168,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
     <div id="r-detail" class="muted"></div>
   </div>
 
-  <div class="panel" id="br"><canvas id="mini" width="340" height="340" aria-label="Overview map. Click to fly to a spot."></canvas><div class="cap">11 × 11 km · north up</div></div>
+  <div class="panel" id="br"><canvas id="mini" width="340" height="340" aria-label="Overview map. Click to fly to a spot."></canvas><div class="cap">15 × 15 km · north up</div></div>
   <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Roads &amp; trails: © OpenStreetMap contributors</div>
   <div id="loading">Loading the valley…</div>
 </div>
@@ -192,7 +193,7 @@ async function getPixelsMain(url){if(PIX_MODE!=="img"){try{const d=await pixelsV
 function TILE_WORKER(postMessage,getPixels){let onmessage;
 // ---- tile worker: downloads height tiles, builds terrain meshes and finds single trees, off the main thread
 let BASE="",L0=null,ROADS=[];const L1=new Map(),L2=new Map(),RW=[22,9,6,4,3,1.6,5,3];
-const HAS_L2=(tx,ty)=>tx>=6&&tx<=8&&ty>=1&&ty<=3;
+const HAS_L2=(tx,ty)=>tx>=6&&tx<=8&&ty>=5&&ty<=7;
 async function decode(url){const bmp=await getPixels(BASE+url);const px=bmp.px,n=bmp.width*bmp.height;
   const el=new Float32Array(n),can=new Float32Array(n),wat=new Uint8Array(n);
   for(let i=0,j=0;i<n;i++,j+=4){el[i]=((px[j]<<8)|px[j+1])/50+150;const b=px[j+2];can[i]=(b&127)*0.4;wat[i]=b>>7}
@@ -215,14 +216,14 @@ function mix(a,b,t,o){o[0]=a[0]+(b[0]-a[0])*t;o[1]=a[1]+(b[1]-a[1])*t;o[2]=a[2]+
 async function build(job){
   const {tx,ty,lod,forest,water,trees}=job;
   let src,cell,step,stride,c0=0,r0=0;
-  if(lod<=1){src=L0;cell=8;step=lod===0?5:1;stride=1375;c0=tx*125;r0=ty*125}
+  if(lod<=1){src=L0;cell=8;step=lod===0?5:1;stride=1875;c0=tx*125;r0=ty*125}
   else if(lod<=3){src=await data(1,tx,ty);cell=2;step=lod===2?2:1;stride=501}
   else{src=await data(2,tx,ty);cell=1;step=1;stride=1001}
   const rows=src.h,n=Math.floor(1000/cell/step)+1,nv=n*n+4*n;
   const pos=new Float32Array(nv*3),cols=new Float32Array(nv*3),nor=new Float32Array(nv*3);
   const useTrees=trees&&forest&&lod>=2;
   const rm=(lod>=2&&forest)?roadMask(tx,ty,cell*step,n):null;
-  const xk=tx-5.5,zk=ty-5.5,o=[0,0,0];let sum=0,mx=-1e9,mn=1e9;
+  const xk=tx-7.5,zk=ty-7.5,o=[0,0,0];let sum=0,mx=-1e9,mn=1e9;
   const H=(k)=>src.el[k]+((forest&&!useTrees)?src.can[k]:0);
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const c=Math.min(stride-1,c0+i*step),r=Math.min(rows-1,r0+j*step),k=r*stride+c,v=j*n+i;
@@ -274,12 +275,12 @@ return onmessage}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (()=>{
-const E0=392400,N1=5017800,KM=11,NT=11,HALF=5.5;
+const E0=392400,N1=5021800,KM=15,NT=15,HALF=7.5,L0N=1875;   // 15 × 15 km, 1 km tiles; l0 = 8 m grid
 const $=id=>document.getElementById(id);
 const toX=E=>(E-E0)/1000-HALF, toZ=N=>(N1-N)/1000-HALF;
 const BR={e:399886.5,n:5014652.3,ax:[-0.76,-0.65],len:62,deck:324.0,width:11};
 const PLACES={
-  overview:{e:398000,n:5012300,d:9.5,h:-35,p:48,label:null},
+  overview:{e:399900,n:5014300,d:12.5,h:-35,p:48,label:null},
   ogulin:{e:400150,n:5014950,d:1.4,h:-160,p:38,label:["Ogulin",""]},
   centar:{e:400230,n:5014780,d:0.28,h:-150,p:28,label:null},
   kastel:{e:399924,n:5014953,d:0.12,h:140,p:20,label:["Frankopan Castle",""],near:1.2,top:349},
@@ -299,9 +300,9 @@ const canvas=$("c");
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(42,1,0.003,80);
+const camera=new THREE.PerspectiveCamera(42,1,0.003,100);
 const controls=new THREE.OrbitControls(camera,canvas);
-controls.enableDamping=true;controls.dampingFactor=0.08;controls.maxPolarAngle=Math.PI*0.495;controls.minDistance=0.03;controls.maxDistance=22;controls.screenSpacePanning=false;
+controls.enableDamping=true;controls.dampingFactor=0.08;controls.maxPolarAngle=Math.PI*0.495;controls.minDistance=0.03;controls.maxDistance=28;controls.screenSpacePanning=false;
 const world=new THREE.Group();scene.add(world);
 const sun=new THREE.DirectionalLight(0xffffff,1);scene.add(sun);
 const hemi=new THREE.HemisphereLight(0xdfe9ff,0x5a5040,0.5);scene.add(hemi);
@@ -323,7 +324,7 @@ float fbm(vec2 p,float w){float s=0.0,a=0.5;for(int i=0;i<3;i++){s+=a*(0.5+(vn(p
 function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(tex),vertexColors:true});m.extensions={derivatives:true};
   m.onBeforeCompile=sh=>{sh.uniforms.uTexel={value:1/(tex.image&&tex.image.width||1000)};sh.uniforms.uDetail=detailU;
     const tt=tx!=null?trailTexFor(tx,ty):null;sh.uniforms.uTrO=trailU.ov;sh.uniforms.uTrOn=trailU.on;
-    sh.uniforms.uTrT={value:tt||emptyTex};sh.uniforms.uHasT={value:tt?1:0};sh.uniforms.uTile={value:new THREE.Vector2(tx!=null?tx*1000-5500:0,ty!=null?ty*1000-5500:0)};
+    sh.uniforms.uTrT={value:tt||emptyTex};sh.uniforms.uHasT={value:tt?1:0};sh.uniforms.uTile={value:new THREE.Vector2(tx!=null?tx*1000-HALF*1000:0,ty!=null?ty*1000-HALF*1000:0)};
     sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nvarying vec2 vWp;varying float vDist;varying float vY;varying float vSteep;")
       .replace("#include <project_vertex>","#include <project_vertex>\nvWp=position.xz*1000.0;vDist=-mvPosition.z*1000.0;vY=position.y*1000.0;vSteep=1.0-normal.y;");
     sh.fragmentShader=sh.fragmentShader.replace("#include <common>","#include <common>\n"+ORTHO_GLSL)
@@ -366,7 +367,7 @@ function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(
     c=mix(c,mix(moss,t0.rgb,0.25),st);
   }
   // hiking trails painted on the ground: whole-valley mask far away, the tile's sharper mask up close
-  vec4 tro=texture2D(uTrO,vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0));
+  vec4 tro=texture2D(uTrO,vec2((vWp.x+7500.0)/15000.0,1.0-(vWp.y+7500.0)/15000.0));
   vec2 tu=(vWp-uTile)/1000.0;vec4 trt=texture2D(uTrT,vec2(tu.x,1.0-tu.y));
   vec4 tr=mix(tro,trt,uHasT*(1.0-smoothstep(5.0,10.0,pw)));
   c=mix(c,tr.rgb,tr.a*uTrOn*(1.0-smoothstep(0.6,0.85,vSteep)));   // no smear down cliff faces
@@ -414,7 +415,7 @@ function sample(E,N,withCanopy){
   const f=fine.get(tx+"_"+ty);
   if(f&&!withCanopy){const lx=(x-tx*1000)/f.cell,ly=(y-ty*1000)/f.cell;const c=Math.min(f.w-2,Math.max(0,Math.floor(lx))),r=Math.min(f.h-2,Math.max(0,Math.floor(ly)));
     const ax=lx-c,ay=ly-r,i=r*f.w+c;return (f.el[i]*(1-ax)+f.el[i+1]*ax)*(1-ay)+(f.el[i+f.w]*(1-ax)+f.el[i+f.w+1]*ax)*ay}
-  const c=Math.min(1374,Math.max(0,Math.round(x/8))),r=Math.min(1374,Math.max(0,Math.round(y/8))),i=r*1375+c;return L0.el[i]+(withCanopy?L0.can[i]:0);
+  const c=Math.min(L0N-1,Math.max(0,Math.round(x/8))),r=Math.min(L0N-1,Math.max(0,Math.round(y/8))),i=r*L0N+c;return L0.el[i]+(withCanopy?L0.can[i]:0);
 }
 async function decodeMain(url){const bmp=await getPixelsMain(url);
   const px=bmp.px,n=bmp.width*bmp.height;const el=new Float32Array(n),can=new Float32Array(n),wat=new Uint8Array(n);
@@ -422,17 +423,17 @@ async function decodeMain(url){const bmp=await getPixelsMain(url);
 
 // ---------------- instant coarse landscape (40 m) shown until the tiles arrive
 let baseMesh=null;
-function buildBase(){const s=5,n=Math.floor(1374/s)+1,pos=new Float32Array(n*n*3),col=new Float32Array(n*n*3);
-  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=(j*s)*1375+i*s,v=j*n+i;pos[v*3]=i*s*0.008-HALF;pos[v*3+1]=(L0.el[k]+(st.forest?L0.can[k]:0)-6)/1000;pos[v*3+2]=j*s*0.008-HALF;
+function buildBase(){const s=5,n=Math.floor((L0N-1)/s)+1,pos=new Float32Array(n*n*3),col=new Float32Array(n*n*3);
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=(j*s)*L0N+i*s,v=j*n+i;pos[v*3]=i*s*0.008-HALF;pos[v*3+1]=(L0.el[k]+(st.forest?L0.can[k]:0)-6)/1000;pos[v*3+2]=j*s*0.008-HALF;
     const c=L0.wat[k]?[0.24,0.44,0.62]:(L0.can[k]>2?[0.25,0.42,0.2]:[0.76,0.74,0.58]);col[v*3]=c[0];col[v*3+1]=c[1];col[v*3+2]=c[2]}
   const idx=[];for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){const a=j*n+i,b=a+1,c=a+n,d=c+1;idx.push(a,c,b,b,c,d)}
   const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(pos,3));g.setAttribute("color",new THREE.BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
   if(ovMat){const uv=new Float32Array(n*n*2);for(let v=0;v<n*n;v++){uv[v*2]=pos[v*3]/KM+0.5;uv[v*2+1]=0.5-pos[v*3+2]/KM}g.setAttribute("uv",new THREE.BufferAttribute(uv,2))}
   baseMesh=new THREE.Mesh(g,ovMat||terrainMat);world.add(baseMesh)}
 // ---------------- tiles & detail scheduling
-const LODCELL=[40,8,4,2,1];const HAS_L2=(tx,ty)=>tx>=6&&tx<=8&&ty>=1&&ty<=3;
+const LODCELL=[40,8,4,2,1];const HAS_L2=(tx,ty)=>tx>=6&&tx<=8&&ty>=5&&ty<=7;
 const tiles=[];for(let ty=0;ty<NT;ty++)for(let tx=0;tx<NT;tx++)tiles.push({tx,ty,lod:-1,mesh:null,trees:[],mean:0,relief:0,want:1,dist:1e9});
-function tileStats(){for(const t of tiles){let mn=1e9,mx=-1e9,s=0,n=0;for(let r=t.ty*125;r<Math.min(1375,t.ty*125+126);r+=3)for(let c=t.tx*125;c<Math.min(1375,t.tx*125+126);c+=3){const e=L0.el[r*1375+c];mn=Math.min(mn,e);mx=Math.max(mx,e);s+=e;n++}t.mean=s/n;t.relief=mx-mn}}
+function tileStats(){for(const t of tiles){let mn=1e9,mx=-1e9,s=0,n=0;for(let r=t.ty*125;r<Math.min(L0N,t.ty*125+126);r+=3)for(let c=t.tx*125;c<Math.min(L0N,t.tx*125+126);c+=3){const e=L0.el[r*L0N+c];mn=Math.min(mn,e);mx=Math.max(mx,e);s+=e;n++}t.mean=s/n;t.relief=mx-mn}}
 function computeWants(){
   const cp=camera.position;
   for(const t of tiles){const x0=t.tx-HALF,z0=t.ty-HALF;const dx=Math.max(x0-cp.x,0,cp.x-(x0+1)),dz=Math.max(z0-cp.z,0,cp.z-(z0+1));
@@ -729,15 +730,15 @@ function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;
   $("tc-up").textContent="↑ "+Math.round(s.up)+" m  ↓ "+Math.round(s.dn)+" m";
   $("tc-ele").textContent=Math.round(s.mn)+"–"+Math.round(s.mx)+" m a.s.l.";
   $("tc-sac").textContent=t.sac?SACTXT[t.sac]||t.sac:"";$("tc-sac").hidden=!t.sac;$("tc-sacl").hidden=!t.sac;
-  $("tc-note").textContent=t.lines.length>1?"Length counts only the part inside this 11 × 11 km model.":"";
+  $("tc-note").textContent=t.lines.length>1?"Length counts only the part inside this 15 × 15 km model.":"";
   card.hidden=false;buildTrails()}
 // peaks, huts, shelters and viewpoints
 const poiBox=$("pois");let pois=[];
-function buildPois(){poiBox.textContent="";pois=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):true).map(p=>{const el=document.createElement("div");el.className="poi poi-"+p[0];
-  const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚"}[p[0]]||"•";
-  el.innerHTML=`<i>${ic}</i>${p[1]?`<span>${p[1].replace(/[<&]/g,"")}</span>`:""}${p[2]!=null&&p[0]==="peak"?` <small>${p[2]} m</small>`:""}`;poiBox.appendChild(el);
-  return {p,el,E:E0+p[3]*0.5,N:N1-p[4]*0.5,far:p[0]==="peak"?2.2:4}})}
-function placePois(){const on=st.trails&&L0;for(const o of pois){if(!on){o.el.hidden=true;continue}
+function buildPois(){poiBox.textContent="";const placeNames=new Set(Object.values(PLACES).filter(p=>p.label).map(p=>p.label[0]));pois=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):(p[0]==="village"||p[0]==="hamlet")?(p[1]&&!placeNames.has(p[1])):true).map(p=>{const el=document.createElement("div");el.className="poi poi-"+p[0];
+  const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚",village:"",hamlet:""}[p[0]]??"•";
+  el.innerHTML=`${ic?`<i>${ic}</i>`:""}${p[1]?`<span>${p[1].replace(/[<&]/g,"")}</span>`:""}${p[2]!=null&&p[0]==="peak"?` <small>${p[2]} m</small>`:""}`;poiBox.appendChild(el);
+  return {p,el,E:E0+p[3]*0.5,N:N1-p[4]*0.5,far:{peak:2.2,village:7,hamlet:2.6}[p[0]]||4,town:p[0]==="village"||p[0]==="hamlet"}})}
+function placePois(){for(const o of pois){if(!L0||!(o.town?st.labels:st.trails)){o.el.hidden=true;continue}
   pv.set(toX(o.E),(sample(o.E,o.N,false)+2)/1000*st.ex,toZ(o.N));if(pv.distanceTo(camera.position)>o.far){o.el.hidden=true;continue}
   pv.project(camera);if(pv.z>1||Math.abs(pv.x)>1.05||Math.abs(pv.y)>1.05){o.el.hidden=true;continue}
   o.el.hidden=false;o.el.style.left=((pv.x+1)/2*innerWidth)+"px";o.el.style.top=((1-pv.y)/2*innerHeight)+"px"}}
@@ -792,7 +793,7 @@ const fold=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").repl
 let localIdx=null;
 function buildLocalIdx(){localIdx=[];
   for(const [k,p] of Object.entries(PLACES))if(p.label)localIdx.push({name:p.label[0],kind:"Place",E:p.e,N:p.n,place:k});
-  for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost"}[p[0]]||"Point";
+  for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost",village:"Village",hamlet:"Hamlet"}[p[0]]||"Point";
     localIdx.push({name:p[1],kind:kind+(p[2]!=null&&p[0]==="peak"?` · ${p[2]} m`:""),E:E0+p[3]*0.5,N:N1-p[4]*0.5})}
   if(TRAILS)TRAILS.forEach((t,ti)=>{if(!t.name||t.k==="path")return;const l=t.lines[0].d,m=l[Math.floor(l.length/2)];
     localIdx.push({name:t.name,kind:"Trail"+(t.ref?" · "+t.ref:""),E:E0+m[0],N:N1-m[1],trail:ti})});
@@ -823,7 +824,7 @@ async function runSearch(){const q=sIn.value.trim();const seq=++sSeq;if(q.length
   if(q.length<3||!geoOk){if(!sItems.length)renderResults(geoOk?"":"No match in the model. Address search needs the online version.");return}
   const adr=await searchAddress(q);if(seq!==sSeq)return;
   const have=new Set(sItems.map(x=>fold(x.name)));sItems=sItems.concat(adr.filter(x=>!have.has(fold(x.name)))).slice(0,9);
-  sActive=sItems.length?Math.max(0,sActive):-1;renderResults(sItems.length?"":"Nothing found inside the 11 × 11 km model.")}
+  sActive=sItems.length?Math.max(0,sActive):-1;renderResults(sItems.length?"":"Nothing found inside the 15 × 15 km model.")}
 function pickResult(i){const it=sItems[i];if(!it)return;sList.hidden=true;sIn.setAttribute("aria-expanded","false");sIn.value=it.name;
   if(it.place){go(it.place);return}
   document.querySelectorAll("[data-place]").forEach(b=>b.setAttribute("aria-current","false"));
@@ -862,7 +863,7 @@ function toLatLon(E,N){const a=6378137,f=1/298.257222101,e2=f*(2-f),k0=0.9999,ep
 canvas.addEventListener("pointermove",ev=>{const now=performance.now();if(now-hoverT<100||!L0)return;hoverT=now;const h=pick(ev);
   if(!h){$("r-elev").textContent="—";$("r-what").textContent="";$("r-coord").textContent="Point at the landscape";return}
   const E=E0+(h.point.x+HALF)*1000,N=N1-(h.point.z+HALF)*1000;const g=sample(E,N,false),top=h.point.y/st.ex*1000;
-  const cn=L0.can[Math.min(1374,Math.round((N1-N)/8))*1375+Math.min(1374,Math.round((E-E0)/8))];const what=cn>3?`forest, trees about ${Math.round(cn)} m`:"open ground";
+  const cn=L0.can[Math.min(L0N-1,Math.round((N1-N)/8))*L0N+Math.min(L0N-1,Math.round((E-E0)/8))];const what=cn>3?`forest, trees about ${Math.round(cn)} m`:"open ground";
   $("r-elev").textContent=`${Math.round(g)} m a.s.l.`;$("r-what").textContent=what;
   const [la,lo]=toLatLon(E,N);$("r-coord").textContent=`${la.toFixed(5)}° N  ${lo.toFixed(5)}° E`;});
 // click on a red trail for its details
@@ -876,8 +877,8 @@ canvas.addEventListener("dblclick",ev=>{const h=pick(ev);if(!h)return;const d=Ma
 // ---------------- mini-map
 const mini=$("mini"),mx=mini.getContext("2d");let miniBase=null;
 function drawMiniBase(){const S=340,img=mx.createImageData(S,S);
-  for(let y=0;y<S;y++)for(let x=0;x<S;x++){const c=Math.min(1373,Math.round(x/S*1375)),r=Math.min(1373,Math.round(y/S*1375)),i=r*1375+c;
-    const dzx=L0.el[i+1]-L0.el[i],dzy=L0.el[i+1375]-L0.el[i];const sh=Math.max(0,Math.min(1,0.72-(dzx*0.7-dzy*0.7)/16));
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){const c=Math.min(L0N-2,Math.round(x/S*L0N)),r=Math.min(L0N-2,Math.round(y/S*L0N)),i=r*L0N+c;
+    const dzx=L0.el[i+1]-L0.el[i],dzy=L0.el[i+L0N]-L0.el[i];const sh=Math.max(0,Math.min(1,0.72-(dzx*0.7-dzy*0.7)/16));
     let R=200,G=196,B=170;if(L0.can[i]>2){R=78;G=112;B=70}if(L0.wat[i]){R=70;G=120;B=170}
     const o=(y*S+x)*4;img.data[o]=R*sh+30;img.data[o+1]=G*sh+30;img.data[o+2]=B*sh+30;img.data[o+3]=255}
   mx.putImageData(img,0,0);miniBase=mx.getImageData(0,0,S,S)}
