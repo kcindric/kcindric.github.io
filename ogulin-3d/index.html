@@ -58,6 +58,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #tr{right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));width:250px;padding:12px 14px;max-height:calc(100% - 230px);overflow:auto}
 #tr h2{margin:0 0 6px;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
 #tr section+section{margin-top:12px}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:2px 0 8px;background:rgba(127,127,127,.15);border-radius:9px;padding:3px}
+.seg label{position:relative;cursor:pointer}.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:6px 2px;border-radius:7px;font-size:12px;line-height:1.15}
+.seg input:checked+span{background:var(--accent);color:#fff;font-weight:600}.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:1px}
+.legend{font-size:11.5px;margin:-2px 0 8px;opacity:.9}.legend .ramp{height:9px;border-radius:5px;margin:3px 0 2px}.legend .ticks{display:flex;justify-content:space-between}
 .tog{display:flex;align-items:center;gap:8px;min-height:27px;cursor:pointer}
 .tog input{accent-color:var(--accent);width:15px;height:15px}
 .dot{width:10px;height:10px;border-radius:3px;margin-left:auto}
@@ -136,6 +141,19 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 
   <button class="panel" id="menu" type="button" aria-expanded="false" aria-controls="tr">Layers</button>
   <aside class="panel" id="tr" aria-label="Map settings">
+    <section>
+      <h2>Base map</h2>
+      <div class="seg" id="bm" role="radiogroup" aria-label="Base map">
+        <label><input type="radio" name="bm" value="0" checked><span>Photo</span></label>
+        <label><input type="radio" name="bm" value="1"><span>Bare earth</span></label>
+        <label><input type="radio" name="bm" value="2"><span>Slope</span></label>
+        <label><input type="radio" name="bm" value="4"><span>Local relief</span></label>
+        <label><input type="radio" name="bm" value="3"><span>Canopy</span></label>
+      </div>
+      <div class="sl" id="lk" hidden><span>Contrast</span><input type="range" id="s-lk" min="0.5" max="3" step="0.05" value="1"><span class="v" id="o-lk">1.0×</span></div>
+      <div class="legend" id="lg" hidden></div>
+      <label class="tog"><input type="checkbox" id="l-cont"> Contour lines<span class="dot" style="background:#8a5a2b"></span></label>
+    </section>
     <section>
       <h2>Layers</h2>
       <label class="tog"><input type="checkbox" id="l-forest" checked> Forest &amp; trees<span class="dot" style="background:#3d6b35"></span></label>
@@ -315,14 +333,55 @@ function prepTex(t){t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THR
 // orthophoto + own layers: close up, the photo is sharpened and mixed with procedural detail chosen by the
 // LiDAR land cover carried in the vertex colours (forest / water / rock / open ground); far away it is the plain photo
 const ORTHO_GLSL=`
+uniform float uMode,uCont,uLHas,uCHas,uLK;uniform sampler2D uLHo,uLCo,uLH,uLC;uniform vec4 uLB;
+vec3 slopeRamp(float d){vec3 c=vec3(0.97,0.97,0.93);
+  c=mix(c,vec3(0.62,0.82,0.52),smoothstep(3.0,10.0,d));c=mix(c,vec3(0.95,0.87,0.30),smoothstep(12.0,18.0,d));
+  c=mix(c,vec3(0.95,0.55,0.20),smoothstep(25.0,31.0,d));c=mix(c,vec3(0.84,0.18,0.15),smoothstep(35.0,40.0,d));
+  return mix(c,vec3(0.45,0.15,0.55),smoothstep(45.0,52.0,d));}
+vec3 canopyRamp(float h){vec3 c=vec3(0.86,0.90,0.55);
+  c=mix(c,vec3(0.45,0.75,0.35),smoothstep(2.0,6.0,h));c=mix(c,vec3(0.13,0.50,0.25),smoothstep(8.0,15.0,h));
+  c=mix(c,vec3(0.10,0.42,0.55),smoothstep(18.0,25.0,h));return mix(c,vec3(0.42,0.20,0.62),smoothstep(28.0,35.0,h));}
 varying vec2 vWp;varying float vDist;varying float vY;varying float vSteep;uniform float uTexel;uniform sampler2D uTrO,uTrT;uniform float uTrOn,uHasT;uniform vec2 uTile;uniform float uDetail;
 float h12(vec2 p){vec3 q=fract(vec3(p.xyx)*0.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h12(i),h12(i+vec2(1,0)),f.x),mix(h12(i+vec2(0,1)),h12(i+vec2(1,1)),f.x),f.y);}
 float aa(float w){return 1.0-smoothstep(0.35,1.1,w);}   // fade a noise octave (w = cells per pixel) before it shimmers
 float fbm(vec2 p,float w){float s=0.0,a=0.5;for(int i=0;i<3;i++){s+=a*(0.5+(vn(p)-0.5)*aa(w));p=p*2.03+vec2(17.1,9.7);w*=2.03;a*=0.5;}return s/0.875;}
 `;
+// ---------------- LiDAR base maps
+// Ground: 1 km tiles at 0.5 m made from the LAZ ground points. One JPEG carries three layers in its YCbCr channels:
+// Y = bare-earth hillshade, Cb = slope, Cr = local relief. Canopy height: 2 km blocks at 1 m.
+// Only the tiles around where you look are held in full detail; further away a whole-valley overview is used.
+const mipTex=t=>{t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THREE.LinearMipmapLinearFilter;t.needsUpdate=true;return t};
+const lumTex=t=>{t.format=THREE.LuminanceFormat;return mipTex(t)};
+const PHONE=innerWidth<760;
+const lidU={mode:{value:0},cont:{value:0},k:{value:1},ovH:{value:null},ovC:{value:null}};
+const LT=new Map(),LB=new Map(),LT_MAX=PHONE?4:12,LB_MAX=PHONE?2:6;window.__lid={LT,LB,lidU,get v(){return {camera,controls,toX,toZ,sample,tiles,ovMat,renderer}}};
+function lidTile(tx,ty){const k=tx+"_"+ty;let b=LT.get(k);if(!b){b={x:tx,y:ty,tex:{value:emptyTex},has:{value:0},busy:0,want:0};LT.set(k,b)}return b}
+function lidBlock(bx,by){const k=bx+"_"+by;let b=LB.get(k);if(!b){b={x:bx,y:by,tex:{value:emptyTex},has:{value:0},busy:0,want:0,
+  rect:new THREE.Vector4(bx*2000-5500,by*2000-5500,Math.min(2000,11000-bx*2000),Math.min(2000,11000-by*2000))};LB.set(k,b)}return b}
+function lidLoad(b,url,prep){if(b.has.value||b.busy)return;b.busy=1;
+  texLoader.load(url,t=>{b.busy=0;if(!b.want){t.dispose();return}b.tex.value=prep(t);b.has.value=1},undefined,()=>{b.busy=0})}
+function lidDrop(b){b.want=0;if(b.has.value){b.tex.value.dispose();b.tex.value=emptyTex;b.has.value=0}}
+function nearest(n,size,max,far){const P=[(controls.target.x+HALF)*1000,(controls.target.z+HALF)*1000],C=[(camera.position.x+HALF)*1000,(camera.position.z+HALF)*1000];
+  const all=[];for(let y=0;y<n;y++)for(let x=0;x<n;x++){const cx=(x+0.5)*size,cy=(y+0.5)*size;
+    all.push([Math.min(Math.hypot(cx-P[0],cy-P[1]),Math.hypot(cx-C[0],cy-C[1])*1.4),x,y])}
+  all.sort((a,b)=>a[0]-b[0]);return all.slice(0,max).filter(a=>a[0]<far)}
+function updateLid(){const m=lidU.mode.value;
+  if(!m){LT.forEach(lidDrop);LB.forEach(lidDrop);return}
+  if(!lidU.ovH.value&&!lidU.ovH.busy){lidU.ovH.busy=1;texLoader.load(PHONE?"t/lid/h0s.jpg":"t/lid/h0.jpg",t=>{lidU.ovH.value=mipTex(t)})}
+  if(m===3&&!lidU.ovC.value&&!lidU.ovC.busy){lidU.ovC.busy=1;texLoader.load("t/lid/c0.jpg",t=>{lidU.ovC.value=lumTex(t)})}
+  const kt=new Set(nearest(11,1000,LT_MAX,3200).map(a=>a[1]+"_"+a[2]));
+  for(const [k,b] of LT)if(!kt.has(k))lidDrop(b);
+  for(const k of kt){const [x,y]=k.split("_").map(Number),b=lidTile(x,y);b.want=1;lidLoad(b,`t/lid/h_${x}_${y}.jpg`,mipTex)}
+  const kb=new Set(m===3?nearest(6,2000,LB_MAX,4500).map(a=>a[1]+"_"+a[2]):[]);
+  for(const [k,b] of LB)if(!kb.has(k))lidDrop(b);
+  for(const k of kb){const [x,y]=k.split("_").map(Number),b=lidBlock(x,y);b.want=1;lidLoad(b,`t/lid/c_${x}_${y}.jpg`,lumTex)}}
+setInterval(updateLid,600);
 function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(tex),vertexColors:true});m.extensions={derivatives:true};
-  m.onBeforeCompile=sh=>{sh.uniforms.uTexel={value:1/(tex.image&&tex.image.width||1000)};sh.uniforms.uDetail=detailU;
+  const lt=tx!=null?lidTile(tx,ty):null,lb=tx!=null?lidBlock(tx>>1,ty>>1):null;
+  m.onBeforeCompile=sh=>{m.userData.sh=sh;sh.uniforms.uMode=lidU.mode;sh.uniforms.uCont=lidU.cont;sh.uniforms.uLK=lidU.k;sh.uniforms.uLHo=lidU.ovH;sh.uniforms.uLCo=lidU.ovC;
+    sh.uniforms.uLH=lt?lt.tex:{value:emptyTex};sh.uniforms.uLHas=lt?lt.has:{value:0};
+    sh.uniforms.uLC=lb?lb.tex:{value:emptyTex};sh.uniforms.uCHas=lb?lb.has:{value:0};sh.uniforms.uLB={value:lb?lb.rect:new THREE.Vector4(-5500,-5500,11000,11000)};sh.uniforms.uTexel={value:1/(tex.image&&tex.image.width||1000)};sh.uniforms.uDetail=detailU;
     const tt=tx!=null?trailTexFor(tx,ty):null;sh.uniforms.uTrO=trailU.ov;sh.uniforms.uTrOn=trailU.on;
     sh.uniforms.uTrT={value:tt||emptyTex};sh.uniforms.uHasT={value:tt?1:0};sh.uniforms.uTile={value:new THREE.Vector2(tx!=null?tx*1000-5500:0,ty!=null?ty*1000-5500:0)};
     sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nvarying vec2 vWp;varying float vDist;varying float vY;varying float vSteep;")
@@ -371,7 +430,32 @@ function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(
   vec2 tu=(vWp-uTile)/1000.0;vec4 trt=texture2D(uTrT,vec2(tu.x,1.0-tu.y));
   vec4 tr=mix(tro,trt,uHasT*(1.0-smoothstep(5.0,10.0,pw)));
   c=mix(c,tr.rgb,tr.a*uTrOn*(1.0-smoothstep(0.6,0.85,vSteep)));   // no smear down cliff faces
-  diffuseColor.rgb*=c;`);};
+  // LiDAR base maps: the photo is replaced by layers decoded from the tile's YCbCr channels
+  if(uMode>0.5){
+    vec2 ou=vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0),hu=(vWp-uTile)/1000.0;hu.y=1.0-hu.y;
+    vec3 h=mix(texture2D(uLHo,ou).rgb,texture2D(uLH,hu).rgb,uLHas);
+    float Y=dot(h,vec3(0.299,0.587,0.114)),Cb=0.5+dot(h,vec3(-0.168736,-0.331264,0.5)),Cr=0.5+dot(h,vec3(0.5,-0.418688,-0.081312));
+    float rr=clamp(0.72+(Y-0.72)*uLK,0.0,1.0);
+    vec3 L=vec3(rr);
+    if(uMode>1.5&&uMode<2.5)L=slopeRamp(Cb*60.0)*(0.45+0.6*rr);
+    if(uMode>2.5&&uMode<3.5){vec2 cu=vec2((vWp.x-uLB.x)/uLB.z,1.0-(vWp.y-uLB.y)/uLB.w);
+      float ch=mix(texture2D(uLCo,ou).r,texture2D(uLC,cu).r,uCHas)*40.0;
+      L=mix(vec3(rr),canopyRamp(ch)*(0.5+0.6*rr),smoothstep(0.4,1.6,ch));}
+    if(uMode>3.5){float d=(Cr-0.5)*3.0*uLK;   // metres above (+) or below (-) the smoothed ground
+      vec3 hi=mix(vec3(0.96,0.95,0.92),vec3(0.80,0.22,0.12),smoothstep(0.03,1.2,d)),lo=mix(vec3(0.96,0.95,0.92),vec3(0.13,0.33,0.72),smoothstep(0.03,1.2,-d));
+      L=(d>0.0?hi:lo)*(0.55+0.55*Y);}
+    c=L;
+  }
+  // contour lines from the ground surface: 5 m (25 m bold) up close, 25 m / 100 m from further away
+  if(uCont>0.5){float fy=fwidth(vY);
+    float k5=1.0-smoothstep(0.35,0.9,fy);
+    float d5=abs(fract(vY/5.0+0.5)-0.5)*5.0/max(fy,1e-3),d25=abs(fract(vY/25.0+0.5)-0.5)*25.0/max(fy,1e-3),d100=abs(fract(vY/100.0+0.5)-0.5)*100.0/max(fy,1e-3);
+    float l5=(1.0-smoothstep(0.4,1.2,d5))*k5*0.55,l25=(1.0-smoothstep(0.7,1.6,d25))*mix(0.55,0.85,k5),l100=(1.0-smoothstep(0.8,1.8,d100))*0.85;
+    float ln=max(l5,max(l25*(1.0-smoothstep(1.5,4.0,fy)),l100));
+    c=mix(c,uMode>0.5?vec3(0.42,0.20,0.06):vec3(0.55,0.30,0.10),ln);
+  }
+  diffuseColor.rgb*=c;`)
+    .replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );","gl_FragColor = vec4( mix(outgoingLight,diffuseColor.rgb,uMode>0.5?0.82:0.0), diffuseColor.a );");};
   return m}
 const detailU={value:1};
 function orthoName(tx,ty,lod){return (lod>=4&&HAS_L2(tx,ty))?`t/o2_${tx}_${ty}.jpg`:`t/o1_${tx}_${ty}.jpg`}
@@ -403,6 +487,7 @@ let jobBusy=0,jobId=0;const fine=new Map();   // tile key -> {el,w,h,cell} fines
 worker.onmessage=(e)=>{const m=e.data;
   if(m.type==="ready"){workerReady=true;return}
   jobBusy=Math.max(0,jobBusy-1);const t=tiles[m.ty*NT+m.tx];
+  if(m.id<=staleId)return;
   if(m.type==="fail"){t.failed=(t.failed||0)+1;t.pendingLod=undefined;return}
   if(m.el){const k=m.tx+"_"+m.ty,prev=fine.get(k);if(!prev||prev.cell>=m.cell)fine.set(k,{el:m.el,w:m.w,h:m.h,cell:m.cell});roadsDirty=true}
   uploads.push(m)};
@@ -919,12 +1004,29 @@ mini.addEventListener("click",ev=>{const r=mini.getBoundingClientRect();const x=
 
 // ---------------- UI wiring
 const tog=(id,key,fn)=>$(id).addEventListener("change",e=>{st[key]=e.target.checked;fn()});
-const rebuildAll=()=>{tiles.forEach(t=>{t.lod=-2;t.failed=0});lastWants=0};
+// results of jobs sent before a rebuild are thrown away, otherwise a late one would bring the old trees back
+let staleId=0;const rebuildAll=()=>{staleId=jobId;uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
 tog("l-forest","forest",rebuildAll);tog("l-water","water",rebuildAll);
 tog("l-bld","bld",()=>{if(bMesh)bMesh.visible=st.bld;if(monuments)monuments.visible=st.bld});tog("l-roads","roads",buildRoads);tog("l-tracks","tracks",buildRoads);tog("l-rail","rail",buildRoads);
 tog("l-labels","labels",placeLabels);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
 $("tc-x").onclick=()=>showTrail(-1);
 $("l-detail").addEventListener("change",e=>{detailU.value=e.target.checked?1:0});
+// base map: LiDAR views switch the trees off so the ground itself is shown; the photo view puts them back as they were
+const LEG={1:'Bare ground at 0.5 m, gridded from the LiDAR ground points (vegetation and buildings removed). Paths, walls, terraces and sinkholes stand out.',
+  4:'<div class="ramp" style="background:linear-gradient(90deg,#2154b8,#f5f2eb 50%,#cc381f)"></div><div class="ticks"><span>hollow −1.2 m</span><span>0</span><span>raised +1.2 m</span></div>Height against the smoothed ground (~12 m): ditches, sunken paths, banks, walls and mounds',
+  2:'<div class="ramp" style="background:linear-gradient(90deg,#f7f7ed,#9ed185 15%,#f2de4d 30%,#f28c33 52%,#d62e26 72%,#73268c)"></div><div class="ticks"><span>0°</span><span>15°</span><span>30°</span><span>45°+</span></div>Slope of the ground, 1 m grid',
+  3:'<div class="ramp" style="background:linear-gradient(90deg,#dbe58c,#73bf59 15%,#21803f 40%,#1a6b8c 65%,#6b339e)"></div><div class="ticks"><span>2 m</span><span>10 m</span><span>20 m</span><span>30 m+</span></div>Height of trees and buildings above the ground (LiDAR surface minus ground)'};
+let saved=null;
+function setBase(m){const was=lidU.mode.value;lidU.mode.value=m;const lg=$("lg");lg.hidden=!m;lg.innerHTML=LEG[m]||"";$("lk").hidden=!(m===1||m===4);
+  if(m&&!was){if(!saved)saved={forest:st.forest,detail:detailU.value};else saved.detail=detailU.value;setForest(false);detailU.value=0;$("l-detail").checked=false}
+  if(!m&&was&&saved){detailU.value=saved.detail;$("l-detail").checked=!!saved.detail;if(!st.cont){setForest(saved.forest);saved=null}else saved.cont=1}
+  updateLid()}
+function setForest(on){if(st.forest===on)return;st.forest=on;$("l-forest").checked=on;rebuildAll()}
+$("s-lk").addEventListener("input",e=>{lidU.k.value=+e.target.value;$("o-lk").textContent=(+e.target.value).toFixed(1)+"×"});
+document.querySelectorAll('input[name="bm"]').forEach(r=>r.addEventListener("change",e=>{if(e.target.checked)setBase(+e.target.value)}));
+$("l-cont").addEventListener("change",e=>{st.cont=e.target.checked;lidU.cont.value=st.cont?1:0;
+  if(st.cont){if(!saved)saved={forest:st.forest,detail:detailU.value,cont:1};setForest(false)}   // contours follow the ground, not the treetops
+  else if(saved&&saved.cont&&!lidU.mode.value){setForest(saved.forest);saved=null}});
 $("s-ex").addEventListener("input",e=>{const old=st.ex;st.ex=+e.target.value;$("o-ex").textContent=st.ex.toFixed(1)+"×";world.scale.y=st.ex;
   controls.target.y*=st.ex/old;camera.position.y+=controls.target.y*(1-old/st.ex);lastWants=0});
 $("q").addEventListener("change",e=>{st.q=QUAL[e.target.value];renderer.setPixelRatio(e.target.value==="light"?1:Math.min(devicePixelRatio,2));resize();rebuildAll()});
@@ -956,6 +1058,7 @@ Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);re
 })(0);
 })();
 </script>
+
 
 </body>
 </html>
