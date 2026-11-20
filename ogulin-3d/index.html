@@ -231,6 +231,36 @@ function roadMask(tx,ty,cell,n){const m=new Uint8Array(n*n);const x0=tx*1000,y0=
 const col=(h)=>[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255];
 const cField=col("#c9c39a"),cMeadow=col("#b5b385"),cRock=col("#9c978e"),cHigh=col("#c4c0b5"),cForA=col("#2d5728"),cForB=col("#557f3e"),cFloor=col("#4f5f33"),cWater=col("#3d6f9e");
 function mix(a,b,t,o){o[0]=a[0]+(b[0]-a[0])*t;o[1]=a[1]+(b[1]-a[1])*t;o[2]=a[2]+(b[2]-a[2])*t}
+// 0.5 m ground: one 2001 x 2001 height tile per km, cut into 250 m chunks of 501 x 501 vertices
+const D5=new Map();
+async function dense(tx,ty){const k=tx+"_"+ty;if(D5.has(k)){const d=D5.get(k);D5.delete(k);D5.set(k,d);return d}
+  const bmp=await getPixels(BASE+`t/d/d_${tx}_${ty}.png`);const px=bmp.px,n=bmp.width*bmp.height,el=new Float32Array(n);
+  for(let i=0,j=0;i<n;i++,j+=4)el[i]=((px[j]<<8)|px[j+1])/50+150;
+  const d={w:bmp.width,el};D5.set(k,d);if(D5.size>3)D5.delete(D5.keys().next().value);return d}
+async function buildDense(job){const {tx,ty,cx,cy,forest,water}=job;const D=await dense(tx,ty),C=await data(1,tx,ty);
+  const W=D.w,N=501,c0=cx*500,r0=cy*500,cell=0.5,xk=tx-5.5,zk=ty-5.5,nv=N*N+4*N;
+  const pos=new Float32Array(nv*3),nor=new Float32Array(nv*3),cols=new Float32Array(nv*3),uv=new Float32Array(nv*2),o=[0,0,0];
+  const E=(c,r)=>D.el[Math.min(W-1,Math.max(0,r))*W+Math.min(W-1,Math.max(0,c))];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const c=c0+i,r=r0+j,v=j*N+i,k2=Math.min(500,Math.round(r/4))*501+Math.min(500,Math.round(c/4));
+    const wet=water&&C.wat[k2];let g=wet?C.el[k2]:E(c,r);   // water stays the flat 2 m surface, so rivers and the lake keep their level
+    pos[v*3]=xk+c*cell/1000;pos[v*3+1]=g/1000;pos[v*3+2]=zk+r*cell/1000;uv[v*2]=c/2000;uv[v*2+1]=1-r/2000;
+    let gx=(E(c+1,r)-E(c-1,r))/(2*cell),gz=(E(c,r+1)-E(c,r-1))/(2*cell);if(wet){gx=0;gz=0}
+    const L=Math.hypot(gx,1,gz);nor[v*3]=-gx/L;nor[v*3+1]=1/L;nor[v*3+2]=-gz/L;
+    const can=forest?C.can[k2]:0,sl=Math.hypot(gx,gz),hn=hash(r*2003+c+tx*7919+ty*104729);
+    if(wet){o[0]=cWater[0];o[1]=cWater[1];o[2]=cWater[2]}
+    else if(can>1.5){mix(cFloor,cForA,0.35*hn,o)}
+    else{const base=g<420?cField:cMeadow;o[0]=base[0];o[1]=base[1];o[2]=base[2];
+      const rk=Math.min(1,Math.max(0,(sl-0.55)*1.3+(g>1080?0.45:0)));if(rk>0)mix(o,cRock,rk,o);if(g>1150)mix(o,cHigh,0.35,o);
+      const f=1+(hn-0.5)*0.05;o[0]*=f;o[1]*=f;o[2]*=f}
+    cols[v*3]=o[0];cols[v*3+1]=o[1];cols[v*3+2]=o[2]}
+  // skirts hang 5 m down from every edge so no gap shows against the coarser ground next to the chunk
+  const top=[...Array(N).keys()],bot=top.map(i=>(N-1)*N+i),lef=top.map(j=>j*N),rig=top.map(j=>j*N+N-1);
+  [...top,...bot,...lef,...rig].forEach((e,q)=>{const v=N*N+q;for(let a=0;a<3;a++){pos[v*3+a]=pos[e*3+a];nor[v*3+a]=nor[e*3+a];cols[v*3+a]=cols[e*3+a]*0.85}uv[v*2]=uv[e*2];uv[v*2+1]=uv[e*2+1];pos[v*3+1]-=0.005});
+  const idx=new Uint32Array(((N-1)*(N-1)+4*(N-1))*6);let p=0;
+  for(let j=0;j<N-1;j++)for(let i=0;i<N-1;i++){const a=j*N+i,b=a+1,c=a+N,d=c+1;idx[p++]=a;idx[p++]=c;idx[p++]=b;idx[p++]=b;idx[p++]=c;idx[p++]=d}
+  const sk=(s,e0,flip)=>{for(let i=0;i<N-1;i++){const a=e0[i],b=e0[i+1],c=N*N+s+i,d=c+1;if(flip){idx[p++]=a;idx[p++]=b;idx[p++]=c;idx[p++]=b;idx[p++]=d;idx[p++]=c}else{idx[p++]=a;idx[p++]=c;idx[p++]=b;idx[p++]=b;idx[p++]=c;idx[p++]=d}}};
+  sk(0,top,true);sk(N,bot,false);sk(2*N,lef,false);sk(3*N,rig,true);
+  return {pos,nor,cols,uv,idx}}
 async function build(job){
   const {tx,ty,lod,forest,water,trees}=job;
   let src,cell,step,stride,c0=0,r0=0;
@@ -283,6 +313,8 @@ async function build(job){
 }
 onmessage=async(e)=>{const m=e.data;
   if(m.type==="init"){BASE=m.base;ROADS=m.roads;L0=await decode("t/l0.png");postMessage({type:"ready"});return}
+  if(m.type==="dense"){try{const r=await buildDense(m);postMessage({type:"dbuilt",id:m.id,tx:m.tx,ty:m.ty,cx:m.cx,cy:m.cy,...r},[r.pos.buffer,r.nor.buffer,r.cols.buffer,r.uv.buffer,r.idx.buffer])}
+    catch(err){postMessage({type:"dfail",id:m.id,tx:m.tx,ty:m.ty,cx:m.cx,cy:m.cy})}return}
   if(m.type==="build"){try{const r=await build(m);const tf=[r.pos.buffer,r.cols.buffer,r.nor.buffer,r.idx.buffer];if(r.trees)tf.push(r.trees.buffer);if(r.el)tf.push(r.el.buffer);
       postMessage({type:"built",id:m.id,tx:m.tx,ty:m.ty,lod:m.lod,...r},tf)}catch(err){postMessage({type:"fail",id:m.id,tx:m.tx,ty:m.ty,lod:m.lod})}}
 };
@@ -310,7 +342,7 @@ const PLACES={
   dobra:{e:398700,n:5013900,d:1.3,h:-150,p:35,label:["Dobra",""],near:6},
   sabljaci:{e:399950,n:5009720,d:2.6,h:-170,p:32,label:["Sabljaci","lake"]},
 };
-const QUAL={light:{k:0.006,fine:4,tree:3,base:0},balanced:{k:0.0035,fine:10,tree:6,base:1},sharp:{k:0.0022,fine:16,tree:9,base:1}};
+const QUAL={light:{k:0.006,fine:4,tree:3,base:0,dR:0,dMax:0},balanced:{k:0.0035,fine:10,tree:6,base:1,dR:380,dMax:6},sharp:{k:0.0022,fine:16,tree:9,base:1,dR:650,dMax:12}};
 const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
 
 // ---------------- renderer / scene
@@ -333,7 +365,7 @@ function prepTex(t){t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THR
 // orthophoto + own layers: close up, the photo is sharpened and mixed with procedural detail chosen by the
 // LiDAR land cover carried in the vertex colours (forest / water / rock / open ground); far away it is the plain photo
 const ORTHO_GLSL=`
-uniform float uMode,uCont,uLHas,uCHas,uLK;uniform sampler2D uLHo,uLCo,uLH,uLC;uniform vec4 uLB;
+uniform float uMode,uCont,uLHas,uCHas,uLK,uIsDense;uniform sampler2D uDM;uniform sampler2D uLHo,uLCo,uLH,uLC;uniform vec4 uLB;
 vec3 slopeRamp(float d){vec3 c=vec3(0.97,0.97,0.93);
   c=mix(c,vec3(0.62,0.82,0.52),smoothstep(3.0,10.0,d));c=mix(c,vec3(0.95,0.87,0.30),smoothstep(12.0,18.0,d));
   c=mix(c,vec3(0.95,0.55,0.20),smoothstep(25.0,31.0,d));c=mix(c,vec3(0.84,0.18,0.15),smoothstep(35.0,40.0,d));
@@ -347,6 +379,44 @@ float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h12
 float aa(float w){return 1.0-smoothstep(0.35,1.1,w);}   // fade a noise octave (w = cells per pixel) before it shimmers
 float fbm(vec2 p,float w){float s=0.0,a=0.5;for(int i=0;i<3;i++){s+=a*(0.5+(vn(p)-0.5)*aa(w));p=p*2.03+vec2(17.1,9.7);w*=2.03;a*=0.5;}return s/0.875;}
 `;
+// ---------------- 0.5 m ground near the camera
+// 250 m chunks with a vertex every 0.5 m, built from the LAZ ground points. A 44 x 44 mask tells the coarser
+// ground where a chunk is loaded, so the two never overlap. Only used where the data was published (kcindric.me).
+const DN=44,dMaskData=new Uint8Array(DN*DN),dMask=new THREE.DataTexture(dMaskData,DN,DN,THREE.LuminanceFormat);
+dMask.magFilter=dMask.minFilter=THREE.NearestFilter;dMask.generateMipmaps=false;dMask.needsUpdate=true;
+const denseU={mask:{value:dMask}};const DCH=new Map(),denseMats=new Map();let denseOK=null;
+fetch("t/d/d_5_0.png",{method:"HEAD"}).then(r=>{denseOK=r.ok}).catch(()=>{denseOK=false});
+function setMask(e,v){dMaskData[(e.ty*4+e.cy)*DN+e.tx*4+e.cx]=v?255:0;dMask.needsUpdate=true}
+function dropDense(e){if(e.mesh){world.remove(e.mesh);e.mesh.geometry.dispose();e.mesh=null;setMask(e,0)}DCH.delete(e.key)}
+function dropAllDense(){[...DCH.values()].forEach(dropDense)}
+function updateDense(){
+  if(!denseOK||!L0||!workerReady||!st.q.dR){if(DCH.size)dropAllDense();return}
+  const R=st.q.dR,cp=camera.position,gx=(cp.x+HALF)*1000,gz=(cp.z+HALF)*1000;
+  const above=Math.max(0,cp.y/st.ex*1000-sample(E0+gx,N1-gz,false));
+  const cand=[];
+  if(above<R*1.25){const i0=Math.max(0,Math.floor((gx-R*1.25)/250)),i1=Math.min(DN-1,Math.floor((gx+R*1.25)/250)),j0=Math.max(0,Math.floor((gz-R*1.25)/250)),j1=Math.min(DN-1,Math.floor((gz+R*1.25)/250));
+    for(let J=j0;J<=j1;J++)for(let I=i0;I<=i1;I++){const dx=Math.max(I*250-gx,0,gx-(I+1)*250),dz=Math.max(J*250-gz,0,gz-(J+1)*250);
+      const d=Math.hypot(dx,dz,above),tx=I>>2,ty=J>>2,t=tiles[ty*NT+tx];
+      if(st.forest&&!t.treesBuilt)continue;   // with trees on, the 0.5 m ground goes only where the single trees stand
+      cand.push({d,key:I+"_"+J,tx,ty,cx:I&3,cy:J&3})}}
+  cand.sort((a,b)=>a.d-b.d);
+  // keep what is already loaded a little longer than it takes to load it, so chunks do not flicker at the edge
+  const keep=new Set(cand.filter((c,i)=>(c.d<R&&i<st.q.dMax)||(DCH.has(c.key)&&c.d<R*1.25&&i<st.q.dMax+2)).map(c=>c.key));
+  for(const e of [...DCH.values()])if(!keep.has(e.key))dropDense(e);
+  for(const c of cand)if(keep.has(c.key)&&!DCH.has(c.key))DCH.set(c.key,{...c,mesh:null,sent:false})}
+function scheduleDense(){if(jobBusy>=2)return;
+  let best=null;for(const e of DCH.values())if(!e.sent&&!e.failed&&(!best||e.d<best.d))best=e;if(!best)return;
+  best.sent=true;jobBusy++;worker.postMessage({type:"dense",id:++jobId,tx:best.tx,ty:best.ty,cx:best.cx,cy:best.cy,forest:st.forest,water:st.water})}
+function denseDone(m){const e=DCH.get((m.tx*4+m.cx)+"_"+(m.ty*4+m.cy));if(!e)return;
+  if(m.type==="dfail"){e.failed=true;return}
+  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(m.pos,3));g.setAttribute("normal",new THREE.BufferAttribute(m.nor,3));
+  g.setAttribute("color",new THREE.BufferAttribute(m.cols,3));g.setAttribute("uv",new THREE.BufferAttribute(m.uv,2));g.setIndex(new THREE.BufferAttribute(m.idx,1));g.computeBoundingSphere();
+  // once on the GPU the chunk needs no copy in memory (heights for the readout come from the tiles)
+  const free=function(){this.array=null};Object.values(g.attributes).forEach(a=>a.onUpload(free));g.index.onUpload(free);
+  const name=orthoName(m.tx,m.ty,4);
+  getTileMat(name,base=>{if(DCH.get(e.key)!==e){g.dispose();return}let dm=denseMats.get(name);if(!dm){dm=orthoMat(base.map,m.tx,m.ty,true);denseMats.set(name,dm)}
+    e.mesh=new THREE.Mesh(g,dm);world.add(e.mesh);setMask(e,1)})}
+setInterval(updateDense,400);
 // ---------------- LiDAR base maps
 // Ground: 1 km tiles at 0.5 m made from the LAZ ground points. One JPEG carries three layers in its YCbCr channels:
 // Y = bare-earth hillshade, Cb = slope, Cr = local relief. Canopy height: 2 km blocks at 1 m.
@@ -355,7 +425,7 @@ const mipTex=t=>{t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THREE.
 const lumTex=t=>{t.format=THREE.LuminanceFormat;return mipTex(t)};
 const PHONE=innerWidth<760;
 const lidU={mode:{value:0},cont:{value:0},k:{value:1},ovH:{value:null},ovC:{value:null}};
-const LT=new Map(),LB=new Map(),LT_MAX=PHONE?4:12,LB_MAX=PHONE?2:6;window.__lid={LT,LB,lidU,get v(){return {camera,controls,toX,toZ,sample,tiles,ovMat,renderer}}};
+const LT=new Map(),LB=new Map(),LT_MAX=PHONE?4:12,LB_MAX=PHONE?2:6;window.__lid={LT,LB,lidU,get dch(){return [...DCH.values()].map(e=>e.key+":"+(e.mesh?"m":e.failed?"F":e.sent?"s":"q"))+" ok="+denseOK},get v(){return {camera,controls,toX,toZ,sample,tiles,ovMat,renderer}}};
 function lidTile(tx,ty){const k=tx+"_"+ty;let b=LT.get(k);if(!b){b={x:tx,y:ty,tex:{value:emptyTex},has:{value:0},busy:0,want:0};LT.set(k,b)}return b}
 function lidBlock(bx,by){const k=bx+"_"+by;let b=LB.get(k);if(!b){b={x:bx,y:by,tex:{value:emptyTex},has:{value:0},busy:0,want:0,
   rect:new THREE.Vector4(bx*2000-5500,by*2000-5500,Math.min(2000,11000-bx*2000),Math.min(2000,11000-by*2000))};LB.set(k,b)}return b}
@@ -377,10 +447,10 @@ function updateLid(){const m=lidU.mode.value;
   for(const [k,b] of LB)if(!kb.has(k))lidDrop(b);
   for(const k of kb){const [x,y]=k.split("_").map(Number),b=lidBlock(x,y);b.want=1;lidLoad(b,`t/lid/c_${x}_${y}.jpg`,lumTex)}}
 setInterval(updateLid,600);
-function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(tex),vertexColors:true});m.extensions={derivatives:true};
+function orthoMat(tex,tx,ty,isDense){const m=new THREE.MeshLambertMaterial({map:prepTex(tex),vertexColors:true});m.extensions={derivatives:true};
   const lt=tx!=null?lidTile(tx,ty):null,lb=tx!=null?lidBlock(tx>>1,ty>>1):null;
   m.onBeforeCompile=sh=>{m.userData.sh=sh;sh.uniforms.uMode=lidU.mode;sh.uniforms.uCont=lidU.cont;sh.uniforms.uLK=lidU.k;sh.uniforms.uLHo=lidU.ovH;sh.uniforms.uLCo=lidU.ovC;
-    sh.uniforms.uLH=lt?lt.tex:{value:emptyTex};sh.uniforms.uLHas=lt?lt.has:{value:0};
+    sh.uniforms.uLH=lt?lt.tex:{value:emptyTex};sh.uniforms.uLHas=lt?lt.has:{value:0};sh.uniforms.uDM=denseU.mask;sh.uniforms.uIsDense={value:isDense?1:0};
     sh.uniforms.uLC=lb?lb.tex:{value:emptyTex};sh.uniforms.uCHas=lb?lb.has:{value:0};sh.uniforms.uLB={value:lb?lb.rect:new THREE.Vector4(-5500,-5500,11000,11000)};sh.uniforms.uTexel={value:1/(tex.image&&tex.image.width||1000)};sh.uniforms.uDetail=detailU;
     const tt=tx!=null?trailTexFor(tx,ty):null;sh.uniforms.uTrO=trailU.ov;sh.uniforms.uTrOn=trailU.on;
     sh.uniforms.uTrT={value:tt||emptyTex};sh.uniforms.uHasT={value:tt?1:0};sh.uniforms.uTile={value:new THREE.Vector2(tx!=null?tx*1000-5500:0,ty!=null?ty*1000-5500:0)};
@@ -425,11 +495,6 @@ function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(
     vec3 moss=mix(lime,vec3(0.36,0.40,0.28),0.35*smoothstep(0.35,0.9,vn(q*0.12)*0.6+s1*0.4));
     c=mix(c,mix(moss,t0.rgb,0.25),st);
   }
-  // hiking trails painted on the ground: whole-valley mask far away, the tile's sharper mask up close
-  vec4 tro=texture2D(uTrO,vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0));
-  vec2 tu=(vWp-uTile)/1000.0;vec4 trt=texture2D(uTrT,vec2(tu.x,1.0-tu.y));
-  vec4 tr=mix(tro,trt,uHasT*(1.0-smoothstep(5.0,10.0,pw)));
-  c=mix(c,tr.rgb,tr.a*uTrOn*(1.0-smoothstep(0.6,0.85,vSteep)));   // no smear down cliff faces
   // LiDAR base maps: the photo is replaced by layers decoded from the tile's YCbCr channels
   if(uMode>0.5){
     vec2 ou=vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0),hu=(vWp-uTile)/1000.0;hu.y=1.0-hu.y;
@@ -454,6 +519,16 @@ function orthoMat(tex,tx,ty){const m=new THREE.MeshLambertMaterial({map:prepTex(
     float ln=max(l5,max(l25*(1.0-smoothstep(1.5,4.0,fy)),l100));
     c=mix(c,uMode>0.5?vec3(0.42,0.20,0.06):vec3(0.55,0.30,0.10),ln);
   }
+  // hiking trails painted on the ground, last so they show on every base map: whole-valley mask far away, the tile's sharper mask up close
+  vec4 tro=texture2D(uTrO,vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0));
+  vec2 tu=(vWp-uTile)/1000.0;vec4 trt=texture2D(uTrT,vec2(tu.x,1.0-tu.y));
+  vec4 tr=mix(tro,trt,uHasT*(1.0-smoothstep(5.0,10.0,pw)));
+  // on the slope and local-relief maps red already means steep or raised ground, so trails are drawn dark there
+  vec3 trc=((uMode>1.5&&uMode<2.5)||uMode>3.5)?vec3(0.07,0.07,0.09):tr.rgb;
+  c=mix(c,trc,tr.a*uTrOn*(1.0-smoothstep(0.6,0.85,vSteep)));   // no smear down cliff faces
+  // where a 0.5 m chunk is loaded, the coarser ground underneath steps aside
+  float dm=texture2D(uDM,(vWp+5500.0)/11000.0).r;
+  if(uIsDense<0.5&&dm>0.5)discard;
   diffuseColor.rgb*=c;`)
     .replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );","gl_FragColor = vec4( mix(outgoingLight,diffuseColor.rgb,uMode>0.5?0.82:0.0), diffuseColor.a );");};
   return m}
@@ -488,6 +563,7 @@ worker.onmessage=(e)=>{const m=e.data;
   if(m.type==="ready"){workerReady=true;return}
   jobBusy=Math.max(0,jobBusy-1);const t=tiles[m.ty*NT+m.tx];
   if(m.id<=staleId)return;
+  if(m.type==="dbuilt"||m.type==="dfail"){denseDone(m);return}
   if(m.type==="fail"){t.failed=(t.failed||0)+1;t.pendingLod=undefined;return}
   if(m.el){const k=m.tx+"_"+m.ty,prev=fine.get(k);if(!prev||prev.cell>=m.cell)fine.set(k,{el:m.el,w:m.w,h:m.h,cell:m.cell});roadsDirty=true}
   uploads.push(m)};
@@ -538,7 +614,7 @@ function schedule(now){
   if(jobBusy>=2)return;
   const todo=tiles.filter(t=>t.want!==t.lod&&t.pendingLod!==t.want&&(t.failed||0)<3).sort((a,b)=>((a.want>a.lod)?0:1)-((b.want>b.lod)?0:1)||a.dist-b.dist);
   const done=tiles.filter(t=>t.want===t.lod).length;progress=done/tiles.length;$("prog").style.width=(progress*100).toFixed(0)+"%";
-  const finest=Math.min(...tiles.map(t=>LODCELL[Math.max(t.lod,0)]));
+  const finest=[...DCH.values()].some(e=>e.mesh)?0.5:Math.min(...tiles.map(t=>LODCELL[Math.max(t.lod,0)]));
   $("r-detail").textContent=`Sharpest ground near you: ${finest} m`+(todo.length?` · refining ${todo.length} tiles`:"");
   if(!todo.length)return;const t=todo[0];
   const treesHere=t.want>=2&&t.dist<st.q.tree*450;
@@ -553,7 +629,7 @@ function applyOne(){
   const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(m.pos,3));g.setAttribute("color",new THREE.BufferAttribute(m.cols,3));
   g.setAttribute("normal",new THREE.BufferAttribute(m.nor,3));g.setIndex(new THREE.BufferAttribute(m.idx,1));g.computeBoundingSphere();
   if(t.mesh){world.remove(t.mesh);t.mesh.geometry.dispose()}
-  t.trees.forEach(x=>{world.remove(x);x.dispose&&x.dispose()});t.trees=[];
+  t.trees.forEach(x=>{world.remove(x);x.dispose&&x.dispose()});t.trees=[];t.treesBuilt=m.trees!=null;
   { // two UV sets: whole-valley overview and this tile's own photo
     const P=m.pos,nv=P.length/3,ug=new Float32Array(nv*2),ul=new Float32Array(nv*2),x0=m.tx-HALF,z0=m.ty-HALF;
     for(let i=0;i<nv;i++){const x=P[i*3],z=P[i*3+2];ug[i*2]=(x+HALF)/KM;ug[i*2+1]=1-(z+HALF)/KM;ul[i*2]=Math.min(1,Math.max(0,x-x0));ul[i*2+1]=1-Math.min(1,Math.max(0,z-z0))}
@@ -1005,7 +1081,7 @@ mini.addEventListener("click",ev=>{const r=mini.getBoundingClientRect();const x=
 // ---------------- UI wiring
 const tog=(id,key,fn)=>$(id).addEventListener("change",e=>{st[key]=e.target.checked;fn()});
 // results of jobs sent before a rebuild are thrown away, otherwise a late one would bring the old trees back
-let staleId=0;const rebuildAll=()=>{staleId=jobId;uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
+let staleId=0;const rebuildAll=()=>{staleId=jobId;dropAllDense();uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
 tog("l-forest","forest",rebuildAll);tog("l-water","water",rebuildAll);
 tog("l-bld","bld",()=>{if(bMesh)bMesh.visible=st.bld;if(monuments)monuments.visible=st.bld});tog("l-roads","roads",buildRoads);tog("l-tracks","tracks",buildRoads);tog("l-rail","rail",buildRoads);
 tog("l-labels","labels",placeLabels);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
@@ -1051,7 +1127,7 @@ Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);re
     camera.position.lerpVectors(flight.c0,flight.c1,e);controls.target.lerpVectors(flight.g0,flight.g1,e);if(t>=1)flight=null}
   controls.update();
   const d=camera.position.distanceTo(controls.target);scene.fog.near=d*2+1.5;scene.fog.far=d*5+10;camera.near=Math.max(0.0008,d*0.01);camera.updateProjectionMatrix();
-  schedule(now);applyUpload();
+  scheduleDense();schedule(now);applyUpload();
   if(roadsDirty&&now-lastRoads>2500&&!uploads.length){lastRoads=now;buildRoads();trailsDirty=true}
   if(TRAILS&&st.trails&&trailSel>=0&&now-lastTrails>400&&!uploads.length&&(trailsDirty||trailSelWidthChanged())){lastTrails=now;buildTrails()}
   renderer.render(scene,camera);placeLabels();placePois();placePin();drawMini();
