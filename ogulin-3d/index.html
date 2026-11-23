@@ -89,6 +89,10 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .poi.a-c .t{left:0;top:0;transform:translate(-50%,-50%)}
 .poi i.drop{width:9px;height:9px;border-radius:50% 0 50% 50%;background:#4cb4ff;border:1.5px solid #fff;transform:translate(-50%,-40%) rotate(-45deg);box-shadow:0 0 3px rgba(0,0,0,.7)}
 .poi-water i.drop{background:#1565c0}
+.poi i.cv{width:9px;height:9px;border-radius:50%;background:#1d1712;border:2.5px solid #e8a45a;box-shadow:0 0 3px rgba(0,0,0,.8)}
+.poi i.cv.arch{width:12px;height:8px;border-radius:7px 7px 1px 1px}
+.poi-cave i,.poi-cave .t{pointer-events:auto;cursor:pointer}.poi-cave i::after{content:"";position:absolute;inset:-9px}
+.poi-cave .t{color:#ffe2bd}
 .poi-village .t{font-size:13.5px;font-weight:700;letter-spacing:.01em}.poi-hamlet .t{font-size:12px;font-weight:500;color:#f1efe6}
 .poi-hut i,.poi-shelter i{color:#ffd23a}.poi-view i{color:#9fe0ff}
 #tc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
@@ -98,16 +102,42 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 #kc .k,#kc .note{color:var(--muted);font-size:12px}#kc .note{font-size:11.5px;margin-top:6px}#kc .g{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:8px;font-family:var(--font-data);font-size:12px;font-variant-numeric:tabular-nums}
 #kc .g dt{color:var(--muted)}#kc .g dd{margin:0}
 #kc-x{position:absolute;top:6px;right:8px;width:28px;height:28px;border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;border-radius:6px}
+#cc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;width:min(400px,calc(100% - 32px));font-size:13px;line-height:1.45;max-height:calc(100% - 120px);overflow:auto}
+#cc h2{margin:0 26px 2px 0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+#cc h2::before{content:"";flex:none;width:11px;height:11px;border-radius:50%;background:#1d1712;border:2.5px solid #e8a45a}
+#cc .k,#cc .note{color:var(--muted);font-size:12px}#cc .note{font-size:11.5px;margin-top:8px}
+#cc .g{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 0;font-family:var(--font-data);font-size:12px;font-variant-numeric:tabular-nums}#cc .g dt{color:var(--muted)}#cc .g dd{margin:0}
+#cc .warn{margin-top:8px;padding:6px 9px;border-radius:7px;background:rgba(217,58,43,.14);color:#d93a2b;font-weight:600;font-size:12.5px}
+#cc .desc{margin:8px 0 0;font-size:12.5px;line-height:1.5;max-height:30vh;overflow:auto;white-space:pre-line}
+#cc-x{position:absolute;top:6px;right:8px;width:28px;height:28px;border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;border-radius:6px}
 #tc .k{color:var(--muted);font-size:12px}#tc .g{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:8px;font-family:var(--font-data);font-size:12px;font-variant-numeric:tabular-nums}
 #tc .g dt{color:var(--muted)}#tc .g dd{margin:0}#tc .note{color:var(--muted);font-size:11.5px;margin-top:6px}
 #tc-x{position:absolute;right:6px;top:6px;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px 6px}
 #credit{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(6px + env(safe-area-inset-bottom,0px));font-size:11px;color:#fff;text-shadow:0 1px 2px #000;white-space:nowrap;pointer-events:none}
 #loading{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-data);font-size:13px;color:var(--muted);background:var(--bg)}
+.chip-list{border-color:#e8a45a;box-shadow:inset 0 0 0 1px rgba(232,164,90,.35)}.chip-list[aria-expanded="true"]{background:#e8a45a;color:#1d1712}
+#sl{left:max(16px,env(safe-area-inset-left,0px));width:min(330px,calc(100vw - 32px));bottom:calc(104px + env(safe-area-inset-bottom,0px));top:300px;display:flex;flex-direction:column;padding:10px 0 0;z-index:5}
+#sl[hidden]{display:none}
+#sl .sl-h{display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px}
+#sl h2{margin:0;font-size:16px;font-weight:700}#sl h2 span{font-family:var(--font-data);font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
+#sl-x{width:28px;height:28px;border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;border-radius:6px}
+#sl .sl-f{display:flex;gap:6px;padding:8px 14px 2px}#sl-q{flex:1 1 auto;width:0;min-width:0;font:inherit;font-size:13px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--fg)}
+#sl-sort{flex:none;width:92px;font:inherit;font-size:12.5px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--fg);padding:0 4px}
+#sl .sl-only{padding:4px 14px;font-size:12.5px;color:var(--muted)}
+#sl-list{list-style:none;margin:4px 0 0;padding:0 6px 8px;overflow:auto;flex:1;min-height:0;border-top:1px solid var(--line)}
+#sl-list button{display:grid;grid-template-columns:14px 1fr;gap:1px 8px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px;cursor:pointer;color:var(--fg);font:inherit}
+#sl-list button:hover,#sl-list button:focus-visible{background:var(--chip)}#sl-list button[aria-current="true"]{background:rgba(232,164,90,.22)}
+#sl-list i{grid-row:1/span 2;align-self:center;width:8px;height:8px;border-radius:50%;background:#1d1712;border:2.5px solid #e8a45a}#sl-list i.arch{width:10px;height:7px;border-radius:6px 6px 1px 1px}
+#sl-list b{font-size:13.5px;font-weight:600;line-height:1.25}#sl-list span{font-family:var(--font-data);font-size:11.5px;color:var(--muted);line-height:1.35}
+#sl-list .out{opacity:.62}#sl-list .out b::after{content:"  · outside the model";font-weight:400;font-size:11px;color:var(--muted)}
+#sl-list .none{padding:14px 8px;color:var(--muted);font-size:13px}
+.poi-cave.sel i{box-shadow:0 0 0 4px rgba(232,164,90,.55),0 0 6px rgba(0,0,0,.9)}.poi-cave.sel .t{color:#fff;font-weight:700}
 .hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.35}
 .bar{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
 @media (max-width:760px){
-  #tc,#kc{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;min-width:0;max-width:none;z-index:6}
+  #sl{top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));width:auto;height:min(55vh,460px);z-index:7}
+  #tc,#kc,#cc{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;min-width:0;max-width:none;z-index:6}
   #tl h1{font-size:22px} #tl{padding:10px 12px}
   #menu{display:block;position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:8px 12px;font-weight:600;cursor:pointer;color:var(--fg)}
   #tr{display:none;top:calc(60px + env(safe-area-inset-top,0px));max-height:calc(100% - 300px)}
@@ -121,10 +151,25 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 </head>
 <body>
 <div id="wrap">
-  <canvas id="c" tabindex="0" aria-label="3D landscape of Ogulin, Klek and Lake Sabljaci. Drag to rotate, scroll to zoom, double-click to fly closer."></canvas>
+  <canvas id="c" tabindex="0" aria-label="3D landscape of Ogulin, Klek and Lake Sabljaci. Drag to move, right-drag to turn and tilt, scroll to zoom, double-click to fly closer."></canvas>
   <div id="labels"></div>
   <div id="pois"></div>
   <div id="pin" hidden><div class="tag"><span></span><button id="pin-x" type="button" aria-label="Remove the marker">×</button></div><i></i></div>
+  <section class="panel" id="sl" hidden aria-labelledby="sl-title">
+    <div class="sl-h"><h2 id="sl-title">Caves &amp; pits <span id="sl-n"></span></h2><button id="sl-x" type="button" aria-label="Close the list">×</button></div>
+    <div class="sl-f"><input id="sl-q" type="search" placeholder="Name, place or cadastre no." aria-label="Filter caves and pits" autocomplete="off">
+      <select id="sl-sort" aria-label="Sort"><option value="name">A–Z</option><option value="depth">Deepest</option><option value="len">Longest</option></select></div>
+    <label class="tog sl-only"><input type="checkbox" id="sl-only"> Only inside the 3D model</label>
+    <ul id="sl-list"></ul>
+  </section>
+  <section class="panel" id="cc" hidden aria-live="polite">
+    <button id="cc-x" type="button" aria-label="Close cave details">×</button>
+    <h2 id="cc-name"></h2><div class="k" id="cc-kind"></div>
+    <div class="warn" id="cc-warn" hidden></div>
+    <dl class="g" id="cc-g"></dl>
+    <p class="desc" id="cc-desc"></p>
+    <div class="note" id="cc-note"></div>
+  </section>
   <section class="panel" id="kc" hidden aria-live="polite">
     <button id="kc-x" type="button" aria-label="Close parcel details">×</button>
     <h2 id="kc-name"></h2><div class="k" id="kc-ko"></div>
@@ -154,6 +199,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <button class="chipbtn" data-place="klek">Klek</button>
       <button class="chipbtn" data-place="dobra">Dobra</button>
       <button class="chipbtn" data-place="sabljaci">Sabljaci</button>
+      <button class="chipbtn chip-list" id="sl-open" type="button" aria-expanded="false" aria-controls="sl">Caves list</button>
     </nav>
   </div>
 
@@ -183,6 +229,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <label class="tog"><input type="checkbox" id="l-water" checked> Water<span class="dot" style="background:#3d6f9e"></span></label>
       <label class="tog"><input type="checkbox" id="l-detail" checked> Ground detail<span class="dot" style="background:#8a9a5b"></span></label>
       <label class="tog"><input type="checkbox" id="l-kat"> Cadastral parcels<span class="dot" style="background:#ffd84a"></span></label>
+      <label class="tog"><input type="checkbox" id="l-caves" checked> Caves &amp; pits<span class="dot" style="background:#e8a45a"></span></label>
       <label class="tog"><input type="checkbox" id="l-springs" checked> Springs &amp; drinking water<span class="dot" style="background:#3aa7f0"></span></label>
       <label class="tog"><input type="checkbox" id="l-labels" checked> Place names</label>
     </section>
@@ -207,7 +254,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   </div>
 
   <div class="panel" id="br"><canvas id="mini" width="340" height="340" aria-label="Overview map. Click to fly to a spot."></canvas><div class="cap">11 × 11 km · north up</div></div>
-  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Cadastre: © DGU · Roads, trails, names &amp; springs: © OpenStreetMap contributors</div>
+  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Cadastre: © DGU · Caves: CroSpeleo · Roads, trails, names &amp; springs: © OpenStreetMap contributors</div>
   <div id="loading">Loading the valley…</div>
 </div>
 
@@ -363,7 +410,7 @@ const PLACES={
   sabljaci:{e:399950,n:5009720,d:2.6,h:-170,p:32,label:["Sabljaci","lake"]},
 };
 const QUAL={light:{k:0.006,fine:4,tree:3,base:0,dR:0,dMax:0},balanced:{k:0.0035,fine:10,tree:6,base:1,dR:380,dMax:6},sharp:{k:0.0022,fine:16,tree:9,base:1,dR:650,dMax:12}};
-const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,springs:true,kat:false,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
+const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,springs:true,caves:true,kat:false,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
 
 // ---------------- renderer / scene
 const canvas=$("c");
@@ -449,7 +496,7 @@ const mipTex=t=>{t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THREE.
 const lumTex=t=>{t.format=THREE.LuminanceFormat;return mipTex(t)};
 const PHONE=innerWidth<760;
 const lidU={mode:{value:0},cont:{value:0},k:{value:1},ovH:{value:null},ovC:{value:null}};
-const LT=new Map(),LB=new Map(),LT_MAX=PHONE?4:12,LB_MAX=PHONE?2:6;window.__lid={LT,LB,lidU,get dch(){return [...DCH.values()].map(e=>e.key+":"+(e.mesh?"m":e.failed?"F":e.sent?"s":"q"))+" ok="+denseOK},get v(){return {camera,controls,toX,toZ,sample,tiles,ovMat,renderer}}};
+const LT=new Map(),LB=new Map(),LT_MAX=PHONE?4:12,LB_MAX=PHONE?2:6;window.__lid={LT,LB,lidU,get pois(){return pois},get dch(){return [...DCH.values()].map(e=>e.key+":"+(e.mesh?"m":e.failed?"F":e.sent?"s":"q"))+" ok="+denseOK},get v(){return {camera,controls,toX,toZ,sample,tiles,ovMat,renderer}}};
 function lidTile(tx,ty){const k=tx+"_"+ty;let b=LT.get(k);if(!b){b={x:tx,y:ty,tex:{value:emptyTex},has:{value:0},busy:0,want:0};LT.set(k,b)}return b}
 function lidBlock(bx,by){const k=bx+"_"+by;let b=LB.get(k);if(!b){b={x:bx,y:by,tex:{value:emptyTex},has:{value:0},busy:0,want:0,
   rect:new THREE.Vector4(bx*2000-5500,by*2000-5500,Math.min(2000,11000-bx*2000),Math.min(2000,11000-by*2000))};LB.set(k,b)}return b}
@@ -512,7 +559,7 @@ function katAt(E,N){const tx=Math.floor((E-E0)/1000),ty=Math.floor((N1-N)/1000);
   for(const p of l){if(x<p.bb[0]||x>p.bb[2]||y<p.bb[1]||y>p.bb[3])continue;let inside=false;
     for(const r of p.rings)for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){const yi=r[i+1],yj=r[j+1];if((yi>y)!==(yj>y)&&x<(r[j]-r[i])*(y-yi)/(yj-yi)+r[i])inside=!inside}
     if(inside&&(!best||p.a<best.a))best=p}return best}
-function showKat(p){katSel=p?p.key:null;katVer++;const card=$("kc");if(!p){card.hidden=true;return}const ko=KOS[p.ko];
+function showKat(p){katSel=p?p.key:null;katVer++;const card=$("kc");if(!p){card.hidden=true;return}$("cc").hidden=true;const ko=KOS[p.ko];
   $("kc-name").textContent="Parcel "+p.n;$("kc-ko").textContent=ko[1]+" cadastral municipality";
   $("kc-area").textContent=p.a.toLocaleString("hr-HR")+" m²";$("kc-ref").textContent=ko[0]+"-"+p.n;
   $("kc-note").textContent=(ko[2]?"":"This municipality's cadastral map is not yet harmonised with the survey, so boundaries can be a few metres off. ")+"DGU digital cadastral plan, updated daily. Not an official extract.";
@@ -975,7 +1022,7 @@ function nearestTrail(E,N,tol){const px=E-E0,py=N1-N;let best=-1,bd=tol;
     for(const l of t.lines)for(const q of l.d){const d=Math.hypot(q[0]-px,q[1]-py);if(d<bd){bd=d;best=ti}}});return best}
 const SACTXT={T1:"T1 · easy hiking",T2:"T2 · mountain hiking",T3:"T3 · demanding mountain hiking",T4:"T4 · alpine hiking",T5:"T5 · demanding alpine",T6:"T6 · difficult alpine"};
 const KTXT={route:"Marked hiking route",trail:"Mountain trail",ferrata:"Protected climbing route (via ferrata)",path:"Footpath (unmarked in OSM)"};
-function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;buildTrails();return}
+function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;buildTrails();return}$("cc").hidden=true;
   const t=TRAILS[ti],s=trailStats(t);
   $("tc-name").textContent=t.name||(t.k==="path"?"Footpath":"Unnamed trail");
   $("tc-kind").textContent=[KTXT[t.k],t.ref].filter(Boolean).join(" · ");
@@ -992,15 +1039,23 @@ function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;
 const SETTLE=[["v","Desmerice",6824,9515],["v","Dujmić Selo",7229,7282],["v","Marković Selo",5473,3387],["v","Otok Oštarijski",9595,5972],["v","Potok Musulinski",77,4928],["v","Puškarići",4993,2702],["v","Ribarići",7921,9079],["v","Sabljak Selo",7981,6293],["v","Salopek Selo",7139,6304],["v","Sveti Petar",6007,2561],["v","Turkovići Ogulinski",3331,1750],["v","Vitunj",1239,341],["v","Zagorje",7930,10427],["h","Bertovići",6365,8767],["h","Bjelsko",1523,5613],["h","Brestovac Ogulinski",3353,207],["h","Brozi",5004,2415],["h","Cindrići",6672,9976],["h","Dobrići",9427,6549],["h","Donje Selo",7029,9928],["h","Drenovac",7115,1509],["h","Dujmići",8456,8077],["h","Francetići",6364,9564],["h","Gavani",7025,4952],["h","Gornji Puškarići",8226,10656],["h","Graba",10747,7976],["h","Kirasići",6449,2275],["h","Kolići",8370,10196],["h","Kosanovići",3811,915],["h","Kostelići",6598,5493],["h","Manojlovići",9828,9046],["h","Obrov",5508,2338],["h","Paušići",8167,8429],["h","Rupčići",7136,8977],["h","Rupčići",7145,10529],["h","Salopeki",8084,6813],["h","Stabarnica",9272,7470],["h","Stjepanovići",3517,102],["h","Sudarići",6461,9817],["h","Tatalovići",4236,1896],["h","Vukovići",8882,10954],["h","Vučići",7844,8608],["h","Šegani",9045,7928]];
 // Springs ("s") and drinking water: fountains, taps, wells ("w"), OpenStreetMap, same units as above; "d" = marked drinkable
 const WATERPTS=[["w","",7638,2837,"d"],["s","Vrelo Vitunjćica",959,95,""],["w","Vrelo Cesarovac",7606,3022,"d"],["w","",8251,6962,""],["s","",7022,10649,""],["s","",2963,1583,""],["s","Franjkovac",4152,5039,""],["s","Ritlja",6747,275,""],["s","Pećinik",5361,3740,""],["w","",8034,3007,"d"],["s","",5384,3764,"d"],["s","",5449,3850,""],["s","",4895,2034,""],["s","",3933,5983,""],["w","Lovrićeva fontana",7641,2756,"d"],["s","Stoševo",6986,8290,""],["s","Zagorska mrežnica",7170,10808,""],["s","Malinki",7225,10308,""],["s","Mostišće",7163,9149,""],["s","",7024,8032,""],["s","",4392,125,""],["s","Pecina",218,8974,""],["s","",5762,6125,""],["w","",6332,4356,"d"]];
+// Caves and pits from the CroSpeleo cave cadastre (speleo.json): [cadastre no., name, E, N (HTRS96/TM), entrance elevation, type,
+// length, depth, hydrogeological role, water, nearest place, locality, description, natural hazards, 1 = unexploded ordnance not cleared,
+// protection, explored by, coordinate accuracy in m, coordinate source, cadastre status]
+let CAVES=[];
+const CAVE_TYPE={"jama":"Pit","špilja":"Cave","špilja s jamskim ulazom":"Cave with a pit entrance","špiljski sustav":"Cave system","kompleksni speleološki objekt":"Complex cave"};
+const caveIn=c=>c[2]>E0&&c[2]<E0+KM*1000&&c[3]<N1&&c[3]>N1-KM*1000;
 const poiBox=$("pois");let pois=[];
 function buildPois(){poiBox.textContent="";
   const list=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):true).map(p=>({kind:p[0],name:p[1],ele:p[2],E:E0+p[3]*0.5,N:N1-p[4]*0.5}))
     .concat(SETTLE.map(q=>({kind:q[0]==="v"?"village":"hamlet",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})))
-    .concat(WATERPTS.map(q=>({kind:q[0]==="s"?"spring":"water",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})));
+    .concat(WATERPTS.map(q=>({kind:q[0]==="s"?"spring":"water",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})))
+    .concat(CAVES.filter(caveIn).map(c=>({kind:"cave",name:c[1],ele:null,E:c[2],N:c[3],cave:c})));
   pois=list.map(q=>{const el=document.createElement("div");el.className="poi poi-"+q.kind;
     const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚"}[q.kind]||"";
-    const drop=q.kind==="spring"||q.kind==="water";
-    if(ic||drop){const i=document.createElement("i");if(drop)i.className="drop";else i.textContent=ic;el.appendChild(i)}
+    const drop=q.kind==="spring"||q.kind==="water",cave=q.kind==="cave";
+    if(ic||drop||cave){const i=document.createElement("i");if(drop)i.className="drop";else if(cave)i.className="cv"+(q.cave[5]==="jama"?"":" arch");else i.textContent=ic;el.appendChild(i)}
+    if(cave){el.title=q.name;el.addEventListener("click",()=>showCave(q.cave))}
     let t=null;if(q.name){t=document.createElement("span");t.className="t";t.textContent=q.name;
       if(q.kind==="peak"&&q.ele!=null){const sm=document.createElement("small");sm.textContent=" "+q.ele+" m";t.appendChild(sm)}el.appendChild(t)}
     poiBox.appendChild(el);
@@ -1011,9 +1066,22 @@ function buildPois(){poiBox.textContent="";
     else if(q.kind==="hut"||q.kind==="shelter"){pri=2.4;far=12}
     else if(q.kind==="hamlet"){pri=3;far=7}
     else if(drop){pri=q.name?3.3:4.6;far=q.name?6:2.2}
+    else if(cave){const big=(q.cave[6]||0)>=300||(q.cave[7]||0)>=60;pri=big?2.6:3.7;far=big?9:3.5}
     else{pri=q.name?4:5;far=q.name?4:1.2}
     const n=(q.name||"").length+(q.kind==="peak"&&q.ele!=null?6:0),big=q.kind==="village";
-    return {...q,el,t,ic:!!ic||drop,pri,far,w:n*(big?7.8:q.kind==="hamlet"?6.8:6.6),h:big?17:15,wOK:false,occ:false,anchor:""}}).sort((a,b)=>a.pri-b.pri)}
+    return {...q,el,t,ic:!!ic||drop||cave,pri,far,w:n*(big?7.8:q.kind==="hamlet"?6.8:6.6),h:big?17:15,wOK:false,occ:false,anchor:""}}).sort((a,b)=>a.pri-b.pri)}
+let selCave=null;
+function showCave(c){const card=$("cc");selCave=c;markCaveList();if(trailSel>=0)showTrail(-1);showKat(null);
+  $("cc-name").textContent=c[1];$("cc-kind").textContent=[CAVE_TYPE[c[5]]||c[5],c[0],caveIn(c)?"":"outside the 3D model"].filter(Boolean).join(" · ");
+  const w=[];if(c[14])w.push("Unexploded ordnance has not been cleared from this object.");if(c[13])w.push("Natural hazards: "+c[13]);
+  $("cc-warn").textContent=w.join(" ");$("cc-warn").hidden=!w.length;
+  const m=v=>Math.round(v).toLocaleString("hr-HR")+" m",rows=[["Length",c[6]?m(c[6]):""],["Depth",c[7]?m(c[7]):""],["Entrance",c[4]!=null?c[4]+" m a.s.l.":""],
+    ["Water",[c[8]!=="nema"?c[8]:"",c[9]].filter(Boolean).join(", ")],["Place",[c[10],c[11]].filter(Boolean).join(" · ")],["Protection",c[15]||""],["Explored by",c[16]||""],
+    ["Position",c[17]!=null?"±"+c[17]+" m"+(c[18]?", "+c[18]:""):""]];
+  const g=$("cc-g");g.textContent="";for(const [k,v] of rows){if(!v)continue;const dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=k;dd.textContent=v;g.append(dt,dd)}
+  $("cc-desc").textContent=c[12]||"";$("cc-desc").hidden=!c[12];
+  $("cc-note").textContent="CroSpeleo cave cadastre. Caves are protected natural features; visit them only with an experienced caving club.";
+  card.hidden=false;card.scrollTop=0}
 // does the ground rise between the camera and this point? (checked a few names per frame)
 function occluded(o){const C=camera.position,px=toX(o.E),py=(sample(o.E,o.N,false)+3)/1000*st.ex,pz=toZ(o.N);
   for(let i=1;i<18;i++){const f=i/18,x=C.x+(px-C.x)*f,y=C.y+(py-C.y)*f,z=C.z+(pz-C.z)*f;
@@ -1029,7 +1097,8 @@ function placePois(){const now=performance.now();
     const x=parseFloat(l.el.style.left),y=parseFloat(l.el.style.top);taken.push([x-l.w/2-3,y-l.h-3,x+l.w/2+3,y+3])}
   if(!L0){pois.forEach(o=>o.el.hidden=true);return}
   for(let k=0;k<14&&pois.length;k++){const o=pois[occI++%pois.length];o.occ=occluded(o)}
-  for(const o of pois){const on=(o.kind==="spring"||o.kind==="water")?st.springs:(o.kind==="hut"||o.kind==="shelter"||o.kind==="view"||o.kind==="post")?st.trails:st.labels;
+  const order=selCave?pois.filter(o=>o.cave===selCave).concat(pois.filter(o=>o.cave!==selCave)):pois;
+  for(const o of order){if(o.kind==="cave")o.el.classList.toggle("sel",o.cave===selCave);const on=o.kind==="cave"?st.caves:(o.kind==="spring"||o.kind==="water")?st.springs:(o.kind==="hut"||o.kind==="shelter"||o.kind==="view"||o.kind==="post")?st.trails:st.labels;
     if(!on||o.occ){o.el.hidden=true;continue}
     pv.set(toX(o.E),(sample(o.E,o.N,false)+2)/1000*st.ex,toZ(o.N));if(pv.distanceTo(camera.position)>o.far){o.el.hidden=true;continue}
     pv.project(camera);if(pv.z>1||Math.abs(pv.x)>1.02||Math.abs(pv.y)>1.02){o.el.hidden=true;continue}
@@ -1091,6 +1160,7 @@ let localIdx=null;
 function buildLocalIdx(){localIdx=[];
   for(const [k,p] of Object.entries(PLACES))if(p.label)localIdx.push({name:p.label[0],kind:"Place",E:p.e,N:p.n,place:k});
   for(const q of SETTLE)localIdx.push({name:q[1],kind:q[0]==="v"?"Village":"Hamlet",E:E0+q[2],N:N1-q[3]});
+  for(const c of CAVES){const inm=caveIn(c);localIdx.push({name:c[1],kind:(CAVE_TYPE[c[5]]||"Cave")+(inm?"":" · outside the 3D model"),E:c[2],N:c[3],cave:c,outside:!inm})}
   for(const q of WATERPTS)if(q[1])localIdx.push({name:q[1],kind:q[0]==="s"?"Spring":"Drinking water",E:E0+q[2],N:N1-q[3]});
   for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost"}[p[0]]||"Point";
     localIdx.push({name:p[1],kind:kind+(p[2]!=null&&p[0]==="peak"?` · ${p[2]} m`:""),E:E0+p[3]*0.5,N:N1-p[4]*0.5})}
@@ -1126,8 +1196,9 @@ async function runSearch(){const q=sIn.value.trim();const seq=++sSeq;if(q.length
   sActive=sItems.length?Math.max(0,sActive):-1;renderResults(sItems.length?"":"Nothing found inside the 11 × 11 km model.")}
 function pickResult(i){const it=sItems[i];if(!it)return;sList.hidden=true;sIn.setAttribute("aria-expanded","false");sIn.value=it.name;
   if(it.place){go(it.place);return}
+  if(it.cave&&it.outside){showCave(it.cave);return}   // no terrain there to fly to: just the details
   document.querySelectorAll("[data-place]").forEach(b=>b.setAttribute("aria-current","false"));
-  setPin(it);if(it.trail!=null)showTrail(it.trail);
+  setPin(it);if(it.trail!=null)showTrail(it.trail);if(it.cave)showCave(it.cave);
   const y=sample(it.E,it.N,false)/1000*st.ex;const cp=camera.position.clone().sub(controls.target);const h=Math.atan2(cp.x,cp.z)*180/Math.PI;
   flyTo(viewFrom(toX(it.E),y,toZ(it.N),it.addr?0.32:0.9,h,it.addr?32:30))}
 sIn.addEventListener("input",()=>{clearTimeout(sTimer);sTimer=setTimeout(runSearch,300)});
@@ -1207,7 +1278,30 @@ const tog=(id,key,fn)=>$(id).addEventListener("change",e=>{st[key]=e.target.chec
 let staleId=0;const rebuildAll=()=>{staleId=jobId;dropAllDense();uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
 tog("l-forest","forest",rebuildAll);tog("l-water","water",rebuildAll);
 tog("l-bld","bld",()=>{if(bMesh)bMesh.visible=st.bld;if(monuments)monuments.visible=st.bld});tog("l-roads","roads",buildRoads);tog("l-tracks","tracks",buildRoads);tog("l-rail","rail",buildRoads);
-tog("l-labels","labels",placeLabels);tog("l-springs","springs",placePois);tog("l-kat","kat",()=>{katU.on.value=st.kat?1:0;if(!st.kat)showKat(null);updateKat()});
+tog("l-labels","labels",placeLabels);tog("l-springs","springs",placePois);tog("l-caves","caves",()=>{if(!st.caves)$("cc").hidden=true;placePois()});
+$("cc-x").onclick=()=>{$("cc").hidden=true;selCave=null;markCaveList()};
+// ---------------- list of caves and pits: filter, sort, click to fly there
+const slQ=$("sl-q"),slSort=$("sl-sort"),slOnly=$("sl-only"),slList=$("sl-list");
+function renderCaveList(){const q=fold(slQ.value.trim()),only=slOnly.checked;
+  const by={name:(a,b)=>a.c[1].localeCompare(b.c[1],"hr"),depth:(a,b)=>(b.c[7]||0)-(a.c[7]||0),len:(a,b)=>(b.c[6]||0)-(a.c[6]||0)}[slSort.value];
+  const L=CAVES.map(c=>({c,inm:caveIn(c)})).filter(x=>(!only||x.inm)&&(!q||fold([x.c[1],x.c[0],x.c[10],x.c[11]].join(" ")).includes(q))).sort((a,b)=>(b.inm-a.inm)||by(a,b));
+  slList.textContent="";$("sl-n").textContent=L.length+(L.length===CAVES.length?"":" of "+CAVES.length);
+  if(!L.length){const li=document.createElement("li");li.className="none";li.textContent="Nothing matches. Try another name or clear the filter.";slList.appendChild(li);return}
+  for(const {c,inm} of L){const li=document.createElement("li"),b=document.createElement("button");b.type="button";if(!inm)b.className="out";b.__cave=c;
+    const i=document.createElement("i");if(c[5]!=="jama")i.className="arch";const n=document.createElement("b");n.textContent=c[1];
+    const m=document.createElement("span");m.textContent=[CAVE_TYPE[c[5]]||c[5],c[7]?"↓ "+Math.round(c[7])+" m":"",c[6]?"↔ "+Math.round(c[6]).toLocaleString("hr-HR")+" m":"",c[10]].filter(Boolean).join(" · ");
+    b.append(i,n,m);b.onclick=()=>goCave(c);li.appendChild(b);slList.appendChild(li)}
+  markCaveList()}
+function markCaveList(){for(const b of slList.querySelectorAll("button")){const on=b.__cave===selCave;b.setAttribute("aria-current",on);if(on&&!$("sl").hidden)b.scrollIntoView({block:"nearest"})}}
+function goCave(c){if(!st.caves){st.caves=true;$("l-caves").checked=true}
+  showCave(c);
+  if(caveIn(c)){const y=sample(c[2],c[3],false)/1000*st.ex,cp=camera.position.clone().sub(controls.target),h=Math.atan2(cp.x,cp.z)*180/Math.PI;
+    flyTo(viewFrom(toX(c[2]),y,toZ(c[3]),0.38,h,38))}
+  if(innerWidth<760)openCaveList(false)}   // on a phone the list makes room for the map
+function openCaveList(on){const p=$("sl");p.hidden=!on;$("sl-open").setAttribute("aria-expanded",on);
+  if(on){if(innerWidth>=760)p.style.top=($("tl").getBoundingClientRect().bottom+10)+"px";renderCaveList();if(innerWidth>=760)slQ.focus()}}
+$("sl-open").onclick=()=>openCaveList($("sl").hidden);$("sl-x").onclick=()=>openCaveList(false);
+slQ.addEventListener("input",renderCaveList);slSort.addEventListener("change",renderCaveList);slOnly.addEventListener("change",renderCaveList);tog("l-kat","kat",()=>{katU.on.value=st.kat?1:0;if(!st.kat)showKat(null);updateKat()});
 $("kc-x").onclick=()=>showKat(null);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
 $("tc-x").onclick=()=>showTrail(-1);
 $("l-detail").addEventListener("change",e=>{detailU.value=e.target.checked?1:0});
@@ -1236,7 +1330,8 @@ if(innerWidth<760){st.q=QUAL.light;$("q").value="light";renderer.setPixelRatio(1
 updateSun();
 
 // ---------------- start
-Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);res()},undefined,()=>res())),decodeMain("t/l0.png"),fetch("buildings_dgu.json").then(r=>r.json()),fetch("bridges.json").then(r=>r.json()),fetch("roads.json").then(r=>r.json()),fetch("trails.json").then(r=>r.json()).catch(()=>null)]).then(([_o,l0,bl,bv,rd,trl])=>{
+Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);res()},undefined,()=>res())),decodeMain("t/l0.png"),fetch("buildings_dgu.json").then(r=>r.json()),fetch("bridges.json").then(r=>r.json()),fetch("roads.json").then(r=>r.json()),fetch("trails.json").then(r=>r.json()).catch(()=>null),fetch("speleo.json").then(r=>r.json()).catch(()=>[])]).then(([_o,l0,bl,bv,rd,trl,spl])=>{
+  CAVES=spl||[];
   L0=l0;tileStats();prepRoads(rd);buildBase();
   if(trl)prepTrails(trl);workerInit.msg={type:"init",base,roads:ROADS.map(r=>({c:r.c,raw:r.raw,bx0:r.bx0,bx1:r.bx1,by0:r.by0,by1:r.by1})).concat(trailsForWorker())};worker.postMessage(workerInit.msg);
   buildBuildings(bl);buildSmallBridges(bv);landmark=buildLandmark();world.add(landmark);monuments=buildMonuments();world.add(monuments);buildRoads();buildTrails();drawMiniBase();
