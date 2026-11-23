@@ -81,8 +81,13 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.55);padding:0 0 7px;background:none;border:0}
 .lbl::after{content:"";position:absolute;left:50%;bottom:0;width:1px;height:7px;background:#fff;box-shadow:0 0 2px #000}
 .lbl small{font-family:var(--font-data);font-weight:400;font-size:11px;opacity:.9}
-.poi{position:absolute;transform:translate(-50%,-100%);pointer-events:none;white-space:nowrap;font-size:11.5px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.6)}
-.poi i{font-style:normal;color:#ff5a4f;margin-right:3px}.poi small{font-family:var(--font-data);font-weight:400;opacity:.9}
+.poi{position:absolute;width:0;height:0;pointer-events:none;white-space:nowrap;font-size:11.5px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.6)}
+.poi i{position:absolute;left:0;top:0;transform:translate(-50%,-50%);font-style:normal;color:#ff5a4f;line-height:1}.poi small{font-family:var(--font-data);font-weight:400;opacity:.9}
+.poi .t{position:absolute}
+.poi.a-up .t{left:0;bottom:6px;transform:translateX(-50%)}.poi.a-dn .t{left:0;top:6px;transform:translateX(-50%)}
+.poi.a-r .t{left:8px;top:0;transform:translateY(-50%)}.poi.a-l .t{right:8px;top:0;transform:translateY(-50%)}
+.poi.a-c .t{left:0;top:0;transform:translate(-50%,-50%)}
+.poi-village .t{font-size:13.5px;font-weight:700;letter-spacing:.01em}.poi-hamlet .t{font-size:12px;font-weight:500;color:#f1efe6}
 .poi-hut i,.poi-shelter i{color:#ffd23a}.poi-view i{color:#9fe0ff}
 #tc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
 #tc h2{margin:0 26px 2px 0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}#tc h2::before{content:"";flex:none;width:14px;height:4px;border-radius:2px;background:#e0241b}
@@ -175,7 +180,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <h2>View</h2>
       <div class="sl"><span>Height</span><input type="range" id="s-ex" min="1" max="3" step="0.1" value="1"><span class="v" id="o-ex">1.0×</span></div>
       <div class="sl"><span>Detail</span><select id="q" aria-label="Detail level"><option value="light">Light (phones)</option><option value="balanced" selected>Balanced</option><option value="sharp">Sharp</option></select><span></span></div>
-      <p class="hint">Mountains load fine detail first, then everything else fills in while you look around. Zoom in to see single trees; double-click to fly somewhere.</p>
+      <p class="hint">Drag to turn and tilt, right-drag or Shift-drag to move the map, scroll to zoom, double-click to fly there. On a phone, two fingers move and zoom. Fine detail loads where you look first.</p>
       <div class="bar" aria-hidden="true"><i id="prog"></i></div>
     </section>
   </aside>
@@ -912,16 +917,55 @@ function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;
   $("tc-sac").textContent=t.sac?SACTXT[t.sac]||t.sac:"";$("tc-sac").hidden=!t.sac;$("tc-sacl").hidden=!t.sac;
   $("tc-note").textContent=t.lines.length>1?"Length counts only the part inside this 11 × 11 km model.":"";
   card.hidden=false;buildTrails()}
-// peaks, huts, shelters and viewpoints
+// peaks, huts, shelters, viewpoints and village names
+// Names are placed most important first. One that would overlap a name already placed tries the other sides of its
+// point and is otherwise left out, so far away you see the main names and more appear as you zoom in.
+// Villages and hamlets: OpenStreetMap place nodes, metres east of the model's west edge and south of its north edge.
+const SETTLE=[["v","Desmerice",6824,9515],["v","Dujmić Selo",7229,7282],["v","Marković Selo",5473,3387],["v","Otok Oštarijski",9595,5972],["v","Potok Musulinski",77,4928],["v","Puškarići",4993,2702],["v","Ribarići",7921,9079],["v","Sabljak Selo",7981,6293],["v","Salopek Selo",7139,6304],["v","Sveti Petar",6007,2561],["v","Turkovići Ogulinski",3331,1750],["v","Vitunj",1239,341],["v","Zagorje",7930,10427],["h","Bertovići",6365,8767],["h","Bjelsko",1523,5613],["h","Brestovac Ogulinski",3353,207],["h","Brozi",5004,2415],["h","Cindrići",6672,9976],["h","Dobrići",9427,6549],["h","Donje Selo",7029,9928],["h","Drenovac",7115,1509],["h","Dujmići",8456,8077],["h","Francetići",6364,9564],["h","Gavani",7025,4952],["h","Gornji Puškarići",8226,10656],["h","Graba",10747,7976],["h","Kirasići",6449,2275],["h","Kolići",8370,10196],["h","Kosanovići",3811,915],["h","Kostelići",6598,5493],["h","Manojlovići",9828,9046],["h","Obrov",5508,2338],["h","Paušići",8167,8429],["h","Rupčići",7136,8977],["h","Rupčići",7145,10529],["h","Salopeki",8084,6813],["h","Stabarnica",9272,7470],["h","Stjepanovići",3517,102],["h","Sudarići",6461,9817],["h","Tatalovići",4236,1896],["h","Vukovići",8882,10954],["h","Vučići",7844,8608],["h","Šegani",9045,7928]];
 const poiBox=$("pois");let pois=[];
-function buildPois(){poiBox.textContent="";pois=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):true).map(p=>{const el=document.createElement("div");el.className="poi poi-"+p[0];
-  const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚"}[p[0]]||"•";
-  el.innerHTML=`<i>${ic}</i>${p[1]?`<span>${p[1].replace(/[<&]/g,"")}</span>`:""}${p[2]!=null&&p[0]==="peak"?` <small>${p[2]} m</small>`:""}`;poiBox.appendChild(el);
-  return {p,el,E:E0+p[3]*0.5,N:N1-p[4]*0.5,far:p[0]==="peak"?2.2:4}})}
-function placePois(){const on=st.trails&&L0;for(const o of pois){if(!on){o.el.hidden=true;continue}
-  pv.set(toX(o.E),(sample(o.E,o.N,false)+2)/1000*st.ex,toZ(o.N));if(pv.distanceTo(camera.position)>o.far){o.el.hidden=true;continue}
-  pv.project(camera);if(pv.z>1||Math.abs(pv.x)>1.05||Math.abs(pv.y)>1.05){o.el.hidden=true;continue}
-  o.el.hidden=false;o.el.style.left=((pv.x+1)/2*innerWidth)+"px";o.el.style.top=((1-pv.y)/2*innerHeight)+"px"}}
+function buildPois(){poiBox.textContent="";
+  const list=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):true).map(p=>({kind:p[0],name:p[1],ele:p[2],E:E0+p[3]*0.5,N:N1-p[4]*0.5}))
+    .concat(SETTLE.map(q=>({kind:q[0]==="v"?"village":"hamlet",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})));
+  pois=list.map(q=>{const el=document.createElement("div");el.className="poi poi-"+q.kind;
+    const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚"}[q.kind]||"";
+    if(ic){const i=document.createElement("i");i.textContent=ic;el.appendChild(i)}
+    let t=null;if(q.name){t=document.createElement("span");t.className="t";t.textContent=q.name;
+      if(q.kind==="peak"&&q.ele!=null){const sm=document.createElement("small");sm.textContent=" "+q.ele+" m";t.appendChild(sm)}el.appendChild(t)}
+    poiBox.appendChild(el);
+    // pri: placed in this order (lower first). far: farthest camera distance in km at which the name is offered
+    const e=q.ele||0;let pri,far;
+    if(q.kind==="village"){pri=1;far=16}
+    else if(q.kind==="peak"){pri=(e>=900?1.5:e>=650?2.2:3.5)-e/1e5;far=e>=900?16:e>=650?11:6}
+    else if(q.kind==="hut"||q.kind==="shelter"){pri=2.4;far=12}
+    else if(q.kind==="hamlet"){pri=3;far=7}
+    else{pri=q.name?4:5;far=q.name?4:1.2}
+    const n=(q.name||"").length+(q.kind==="peak"&&q.ele!=null?6:0),big=q.kind==="village";
+    return {...q,el,t,ic:!!ic,pri,far,w:n*(big?7.8:q.kind==="hamlet"?6.8:6.6),h:big?17:15,wOK:false,occ:false,anchor:""}}).sort((a,b)=>a.pri-b.pri)}
+// does the ground rise between the camera and this point? (checked a few names per frame)
+function occluded(o){const C=camera.position,px=toX(o.E),py=(sample(o.E,o.N,false)+3)/1000*st.ex,pz=toZ(o.N);
+  for(let i=1;i<18;i++){const f=i/18,x=C.x+(px-C.x)*f,y=C.y+(py-C.y)*f,z=C.z+(pz-C.z)*f;
+    if(sample(E0+(x+HALF)*1000,N1-(z+HALF)*1000,false)/1000*st.ex>y+0.006*st.ex)return true}return false}
+const taken=[];let occI=0,panels=[],panelsT=0;
+// a name has to fit on screen and stay clear of names already placed and of the panels
+const free=b=>{if(b[0]<0||b[1]<0||b[2]>innerWidth||b[3]>innerHeight)return false;
+  for(const o of taken)if(b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1])return false;return true};
+function placePois(){const now=performance.now();
+  if(now-panelsT>500){panelsT=now;panels=[...document.querySelectorAll(".panel")].map(e=>e.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.right,r.bottom])}
+  taken.length=0;taken.push(...panels);
+  for(const l of lbls){if(l.el.hidden)continue;if(!l.w){l.w=l.el.offsetWidth;l.h=l.el.offsetHeight}   // the big place labels keep their spot
+    const x=parseFloat(l.el.style.left),y=parseFloat(l.el.style.top);taken.push([x-l.w/2-3,y-l.h-3,x+l.w/2+3,y+3])}
+  if(!L0){pois.forEach(o=>o.el.hidden=true);return}
+  for(let k=0;k<14&&pois.length;k++){const o=pois[occI++%pois.length];o.occ=occluded(o)}
+  for(const o of pois){const on=(o.kind==="hut"||o.kind==="shelter"||o.kind==="view"||o.kind==="post")?st.trails:st.labels;
+    if(!on||o.occ){o.el.hidden=true;continue}
+    pv.set(toX(o.E),(sample(o.E,o.N,false)+2)/1000*st.ex,toZ(o.N));if(pv.distanceTo(camera.position)>o.far){o.el.hidden=true;continue}
+    pv.project(camera);if(pv.z>1||Math.abs(pv.x)>1.02||Math.abs(pv.y)>1.02){o.el.hidden=true;continue}
+    const x=(pv.x+1)/2*innerWidth,y=(1-pv.y)/2*innerHeight,w=o.w,h=o.h,m=2;
+    const sides=o.ic?[["up",x-w/2,y-6-h],["r",x+8,y-h/2],["l",x-8-w,y-h/2]]:[["c",x-w/2,y-h/2],["up",x-w/2,y-6-h],["dn",x-w/2,y+6]];
+    let a=null;if(o.t){for(const sd of sides){const b=[sd[1]-m,sd[2]-m,sd[1]+w+m,sd[2]+h+m];if(free(b)){a=sd[0];taken.push(b);break}}if(!a){o.el.hidden=true;continue}}
+    if(o.ic)taken.push([x-6,y-6,x+6,y+6]);
+    o.el.hidden=false;o.el.style.left=x+"px";o.el.style.top=y+"px";if(a&&o.anchor!==a){o.el.classList.remove("a-"+o.anchor);o.el.classList.add("a-"+a);o.anchor=a}
+    if(o.t&&!o.wOK){o.wOK=true;const r=o.t.getBoundingClientRect();if(r.width){o.w=r.width;o.h=r.height}}}}   // swap the estimate for the measured size once
 
 // ---------------- sun, sky, time of day (Ogulin 45.27° N)
 const LAT=45.27*Math.PI/180,C=h=>new THREE.Color(h);
@@ -973,6 +1017,7 @@ const fold=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").repl
 let localIdx=null;
 function buildLocalIdx(){localIdx=[];
   for(const [k,p] of Object.entries(PLACES))if(p.label)localIdx.push({name:p.label[0],kind:"Place",E:p.e,N:p.n,place:k});
+  for(const q of SETTLE)localIdx.push({name:q[1],kind:q[0]==="v"?"Village":"Hamlet",E:E0+q[2],N:N1-q[3]});
   for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost"}[p[0]]||"Point";
     localIdx.push({name:p[1],kind:kind+(p[2]!=null&&p[0]==="peak"?` · ${p[2]} m`:""),E:E0+p[3]*0.5,N:N1-p[4]*0.5})}
   if(TRAILS)TRAILS.forEach((t,ti)=>{if(!t.name||t.k==="path")return;const l=t.lines[0].d,m=l[Math.floor(l.length/2)];
