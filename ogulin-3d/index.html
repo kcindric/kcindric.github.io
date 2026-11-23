@@ -87,6 +87,8 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .poi.a-up .t{left:0;bottom:6px;transform:translateX(-50%)}.poi.a-dn .t{left:0;top:6px;transform:translateX(-50%)}
 .poi.a-r .t{left:8px;top:0;transform:translateY(-50%)}.poi.a-l .t{right:8px;top:0;transform:translateY(-50%)}
 .poi.a-c .t{left:0;top:0;transform:translate(-50%,-50%)}
+.poi i.drop{width:9px;height:9px;border-radius:50% 0 50% 50%;background:#4cb4ff;border:1.5px solid #fff;transform:translate(-50%,-40%) rotate(-45deg);box-shadow:0 0 3px rgba(0,0,0,.7)}
+.poi-water i.drop{background:#1565c0}
 .poi-village .t{font-size:13.5px;font-weight:700;letter-spacing:.01em}.poi-hamlet .t{font-size:12px;font-weight:500;color:#f1efe6}
 .poi-hut i,.poi-shelter i{color:#ffd23a}.poi-view i{color:#9fe0ff}
 #tc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
@@ -169,6 +171,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <label class="tog"><input type="checkbox" id="l-trails" checked> Hiking trails<span class="dot" style="background:#e0241b"></span></label>
       <label class="tog"><input type="checkbox" id="l-water" checked> Water<span class="dot" style="background:#3d6f9e"></span></label>
       <label class="tog"><input type="checkbox" id="l-detail" checked> Ground detail<span class="dot" style="background:#8a9a5b"></span></label>
+      <label class="tog"><input type="checkbox" id="l-springs" checked> Springs &amp; drinking water<span class="dot" style="background:#3aa7f0"></span></label>
       <label class="tog"><input type="checkbox" id="l-labels" checked> Place names</label>
     </section>
     <section>
@@ -192,7 +195,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   </div>
 
   <div class="panel" id="br"><canvas id="mini" width="340" height="340" aria-label="Overview map. Click to fly to a spot."></canvas><div class="cap">11 × 11 km · north up</div></div>
-  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Roads &amp; trails: © OpenStreetMap contributors</div>
+  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Roads, trails, names &amp; springs: © OpenStreetMap contributors</div>
   <div id="loading">Loading the valley…</div>
 </div>
 
@@ -348,7 +351,7 @@ const PLACES={
   sabljaci:{e:399950,n:5009720,d:2.6,h:-170,p:32,label:["Sabljaci","lake"]},
 };
 const QUAL={light:{k:0.006,fine:4,tree:3,base:0,dR:0,dMax:0},balanced:{k:0.0035,fine:10,tree:6,base:1,dR:380,dMax:6},sharp:{k:0.0022,fine:16,tree:9,base:1,dR:650,dMax:12}};
-const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
+const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,springs:true,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
 
 // ---------------- renderer / scene
 const canvas=$("c");
@@ -922,13 +925,17 @@ function showTrail(ti){trailSel=ti;const card=$("tc");if(ti<0){card.hidden=true;
 // point and is otherwise left out, so far away you see the main names and more appear as you zoom in.
 // Villages and hamlets: OpenStreetMap place nodes, metres east of the model's west edge and south of its north edge.
 const SETTLE=[["v","Desmerice",6824,9515],["v","Dujmić Selo",7229,7282],["v","Marković Selo",5473,3387],["v","Otok Oštarijski",9595,5972],["v","Potok Musulinski",77,4928],["v","Puškarići",4993,2702],["v","Ribarići",7921,9079],["v","Sabljak Selo",7981,6293],["v","Salopek Selo",7139,6304],["v","Sveti Petar",6007,2561],["v","Turkovići Ogulinski",3331,1750],["v","Vitunj",1239,341],["v","Zagorje",7930,10427],["h","Bertovići",6365,8767],["h","Bjelsko",1523,5613],["h","Brestovac Ogulinski",3353,207],["h","Brozi",5004,2415],["h","Cindrići",6672,9976],["h","Dobrići",9427,6549],["h","Donje Selo",7029,9928],["h","Drenovac",7115,1509],["h","Dujmići",8456,8077],["h","Francetići",6364,9564],["h","Gavani",7025,4952],["h","Gornji Puškarići",8226,10656],["h","Graba",10747,7976],["h","Kirasići",6449,2275],["h","Kolići",8370,10196],["h","Kosanovići",3811,915],["h","Kostelići",6598,5493],["h","Manojlovići",9828,9046],["h","Obrov",5508,2338],["h","Paušići",8167,8429],["h","Rupčići",7136,8977],["h","Rupčići",7145,10529],["h","Salopeki",8084,6813],["h","Stabarnica",9272,7470],["h","Stjepanovići",3517,102],["h","Sudarići",6461,9817],["h","Tatalovići",4236,1896],["h","Vukovići",8882,10954],["h","Vučići",7844,8608],["h","Šegani",9045,7928]];
+// Springs ("s") and drinking water: fountains, taps, wells ("w"), OpenStreetMap, same units as above; "d" = marked drinkable
+const WATERPTS=[["w","",7638,2837,"d"],["s","Vrelo Vitunjćica",959,95,""],["w","Vrelo Cesarovac",7606,3022,"d"],["w","",8251,6962,""],["s","",7022,10649,""],["s","",2963,1583,""],["s","Franjkovac",4152,5039,""],["s","Ritlja",6747,275,""],["s","Pećinik",5361,3740,""],["w","",8034,3007,"d"],["s","",5384,3764,"d"],["s","",5449,3850,""],["s","",4895,2034,""],["s","",3933,5983,""],["w","Lovrićeva fontana",7641,2756,"d"],["s","Stoševo",6986,8290,""],["s","Zagorska mrežnica",7170,10808,""],["s","Malinki",7225,10308,""],["s","Mostišće",7163,9149,""],["s","",7024,8032,""],["s","",4392,125,""],["s","Pecina",218,8974,""],["s","",5762,6125,""],["w","",6332,4356,"d"]];
 const poiBox=$("pois");let pois=[];
 function buildPois(){poiBox.textContent="";
   const list=TPTS.filter(p=>p[0]==="peak"?(p[1]&&p[1]!=="Klek"):true).map(p=>({kind:p[0],name:p[1],ele:p[2],E:E0+p[3]*0.5,N:N1-p[4]*0.5}))
-    .concat(SETTLE.map(q=>({kind:q[0]==="v"?"village":"hamlet",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})));
+    .concat(SETTLE.map(q=>({kind:q[0]==="v"?"village":"hamlet",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})))
+    .concat(WATERPTS.map(q=>({kind:q[0]==="s"?"spring":"water",name:q[1],ele:null,E:E0+q[2],N:N1-q[3]})));
   pois=list.map(q=>{const el=document.createElement("div");el.className="poi poi-"+q.kind;
     const ic={peak:"▲",hut:"⌂",shelter:"⌂",view:"◉",post:"✚"}[q.kind]||"";
-    if(ic){const i=document.createElement("i");i.textContent=ic;el.appendChild(i)}
+    const drop=q.kind==="spring"||q.kind==="water";
+    if(ic||drop){const i=document.createElement("i");if(drop)i.className="drop";else i.textContent=ic;el.appendChild(i)}
     let t=null;if(q.name){t=document.createElement("span");t.className="t";t.textContent=q.name;
       if(q.kind==="peak"&&q.ele!=null){const sm=document.createElement("small");sm.textContent=" "+q.ele+" m";t.appendChild(sm)}el.appendChild(t)}
     poiBox.appendChild(el);
@@ -938,9 +945,10 @@ function buildPois(){poiBox.textContent="";
     else if(q.kind==="peak"){pri=(e>=900?1.5:e>=650?2.2:3.5)-e/1e5;far=e>=900?16:e>=650?11:6}
     else if(q.kind==="hut"||q.kind==="shelter"){pri=2.4;far=12}
     else if(q.kind==="hamlet"){pri=3;far=7}
+    else if(drop){pri=q.name?3.3:4.6;far=q.name?6:2.2}
     else{pri=q.name?4:5;far=q.name?4:1.2}
     const n=(q.name||"").length+(q.kind==="peak"&&q.ele!=null?6:0),big=q.kind==="village";
-    return {...q,el,t,ic:!!ic,pri,far,w:n*(big?7.8:q.kind==="hamlet"?6.8:6.6),h:big?17:15,wOK:false,occ:false,anchor:""}}).sort((a,b)=>a.pri-b.pri)}
+    return {...q,el,t,ic:!!ic||drop,pri,far,w:n*(big?7.8:q.kind==="hamlet"?6.8:6.6),h:big?17:15,wOK:false,occ:false,anchor:""}}).sort((a,b)=>a.pri-b.pri)}
 // does the ground rise between the camera and this point? (checked a few names per frame)
 function occluded(o){const C=camera.position,px=toX(o.E),py=(sample(o.E,o.N,false)+3)/1000*st.ex,pz=toZ(o.N);
   for(let i=1;i<18;i++){const f=i/18,x=C.x+(px-C.x)*f,y=C.y+(py-C.y)*f,z=C.z+(pz-C.z)*f;
@@ -956,7 +964,7 @@ function placePois(){const now=performance.now();
     const x=parseFloat(l.el.style.left),y=parseFloat(l.el.style.top);taken.push([x-l.w/2-3,y-l.h-3,x+l.w/2+3,y+3])}
   if(!L0){pois.forEach(o=>o.el.hidden=true);return}
   for(let k=0;k<14&&pois.length;k++){const o=pois[occI++%pois.length];o.occ=occluded(o)}
-  for(const o of pois){const on=(o.kind==="hut"||o.kind==="shelter"||o.kind==="view"||o.kind==="post")?st.trails:st.labels;
+  for(const o of pois){const on=(o.kind==="spring"||o.kind==="water")?st.springs:(o.kind==="hut"||o.kind==="shelter"||o.kind==="view"||o.kind==="post")?st.trails:st.labels;
     if(!on||o.occ){o.el.hidden=true;continue}
     pv.set(toX(o.E),(sample(o.E,o.N,false)+2)/1000*st.ex,toZ(o.N));if(pv.distanceTo(camera.position)>o.far){o.el.hidden=true;continue}
     pv.project(camera);if(pv.z>1||Math.abs(pv.x)>1.02||Math.abs(pv.y)>1.02){o.el.hidden=true;continue}
@@ -1018,6 +1026,7 @@ let localIdx=null;
 function buildLocalIdx(){localIdx=[];
   for(const [k,p] of Object.entries(PLACES))if(p.label)localIdx.push({name:p.label[0],kind:"Place",E:p.e,N:p.n,place:k});
   for(const q of SETTLE)localIdx.push({name:q[1],kind:q[0]==="v"?"Village":"Hamlet",E:E0+q[2],N:N1-q[3]});
+  for(const q of WATERPTS)if(q[1])localIdx.push({name:q[1],kind:q[0]==="s"?"Spring":"Drinking water",E:E0+q[2],N:N1-q[3]});
   for(const p of TPTS){if(!p[1])continue;const kind={peak:"Peak",hut:"Mountain hut",shelter:"Shelter",view:"Viewpoint",post:"Signpost"}[p[0]]||"Point";
     localIdx.push({name:p[1],kind:kind+(p[2]!=null&&p[0]==="peak"?` · ${p[2]} m`:""),E:E0+p[3]*0.5,N:N1-p[4]*0.5})}
   if(TRAILS)TRAILS.forEach((t,ti)=>{if(!t.name||t.k==="path")return;const l=t.lines[0].d,m=l[Math.floor(l.length/2)];
@@ -1129,7 +1138,7 @@ const tog=(id,key,fn)=>$(id).addEventListener("change",e=>{st[key]=e.target.chec
 let staleId=0;const rebuildAll=()=>{staleId=jobId;dropAllDense();uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
 tog("l-forest","forest",rebuildAll);tog("l-water","water",rebuildAll);
 tog("l-bld","bld",()=>{if(bMesh)bMesh.visible=st.bld;if(monuments)monuments.visible=st.bld});tog("l-roads","roads",buildRoads);tog("l-tracks","tracks",buildRoads);tog("l-rail","rail",buildRoads);
-tog("l-labels","labels",placeLabels);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
+tog("l-labels","labels",placeLabels);tog("l-springs","springs",placePois);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
 $("tc-x").onclick=()=>showTrail(-1);
 $("l-detail").addEventListener("change",e=>{detailU.value=e.target.checked?1:0});
 // base map: LiDAR views switch the trees off so the ground itself is shown; the photo view puts them back as they were
