@@ -93,6 +93,11 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .poi-hut i,.poi-shelter i{color:#ffd23a}.poi-view i{color:#9fe0ff}
 #tc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
 #tc h2{margin:0 26px 2px 0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}#tc h2::before{content:"";flex:none;width:14px;height:4px;border-radius:2px;background:#e0241b}
+#kc{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:10px 14px 12px;min-width:250px;max-width:min(360px,calc(100% - 32px));font-size:13px;line-height:1.45}
+#kc h2{margin:0 26px 2px 0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}#kc h2::before{content:"";flex:none;width:12px;height:12px;border:2px solid #ffd84a;border-radius:2px}
+#kc .k,#kc .note{color:var(--muted);font-size:12px}#kc .note{font-size:11.5px;margin-top:6px}#kc .g{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:8px;font-family:var(--font-data);font-size:12px;font-variant-numeric:tabular-nums}
+#kc .g dt{color:var(--muted)}#kc .g dd{margin:0}
+#kc-x{position:absolute;top:6px;right:8px;width:28px;height:28px;border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;border-radius:6px}
 #tc .k{color:var(--muted);font-size:12px}#tc .g{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:8px;font-family:var(--font-data);font-size:12px;font-variant-numeric:tabular-nums}
 #tc .g dt{color:var(--muted)}#tc .g dd{margin:0}#tc .note{color:var(--muted);font-size:11.5px;margin-top:6px}
 #tc-x{position:absolute;right:6px;top:6px;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px 6px}
@@ -102,7 +107,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
 .bar{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
 @media (max-width:760px){
-  #tc{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;min-width:0;max-width:none;z-index:6}
+  #tc,#kc{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));transform:none;min-width:0;max-width:none;z-index:6}
   #tl h1{font-size:22px} #tl{padding:10px 12px}
   #menu{display:block;position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:8px 12px;font-weight:600;cursor:pointer;color:var(--fg)}
   #tr{display:none;top:calc(60px + env(safe-area-inset-top,0px));max-height:calc(100% - 300px)}
@@ -120,6 +125,12 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   <div id="labels"></div>
   <div id="pois"></div>
   <div id="pin" hidden><div class="tag"><span></span><button id="pin-x" type="button" aria-label="Remove the marker">×</button></div><i></i></div>
+  <section class="panel" id="kc" hidden aria-live="polite">
+    <button id="kc-x" type="button" aria-label="Close parcel details">×</button>
+    <h2 id="kc-name"></h2><div class="k" id="kc-ko"></div>
+    <dl class="g"><dt>Area (map)</dt><dd id="kc-area"></dd><dt>Reference</dt><dd id="kc-ref"></dd></dl>
+    <div class="note" id="kc-note"></div>
+  </section>
   <section class="panel" id="tc" hidden aria-live="polite">
     <button id="tc-x" type="button" aria-label="Close trail details">×</button>
     <h2 id="tc-name"></h2><div class="k" id="tc-kind"></div>
@@ -171,6 +182,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <label class="tog"><input type="checkbox" id="l-trails" checked> Hiking trails<span class="dot" style="background:#e0241b"></span></label>
       <label class="tog"><input type="checkbox" id="l-water" checked> Water<span class="dot" style="background:#3d6f9e"></span></label>
       <label class="tog"><input type="checkbox" id="l-detail" checked> Ground detail<span class="dot" style="background:#8a9a5b"></span></label>
+      <label class="tog"><input type="checkbox" id="l-kat"> Cadastral parcels<span class="dot" style="background:#ffd84a"></span></label>
       <label class="tog"><input type="checkbox" id="l-springs" checked> Springs &amp; drinking water<span class="dot" style="background:#3aa7f0"></span></label>
       <label class="tog"><input type="checkbox" id="l-labels" checked> Place names</label>
     </section>
@@ -183,7 +195,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
       <h2>View</h2>
       <div class="sl"><span>Height</span><input type="range" id="s-ex" min="1" max="3" step="0.1" value="1"><span class="v" id="o-ex">1.0×</span></div>
       <div class="sl"><span>Detail</span><select id="q" aria-label="Detail level"><option value="light">Light (phones)</option><option value="balanced" selected>Balanced</option><option value="sharp">Sharp</option></select><span></span></div>
-      <p class="hint">Drag to turn and tilt, right-drag or Shift-drag to move the map, scroll to zoom, double-click to fly there. On a phone, two fingers move and zoom. Fine detail loads where you look first.</p>
+      <p class="hint">Drag to move the map, right-drag or Ctrl/Shift-drag to turn and tilt, scroll to zoom, double-click to fly there. On a phone, one finger moves the map and two fingers zoom, turn and tilt. Fine detail loads where you look first.</p>
       <div class="bar" aria-hidden="true"><i id="prog"></i></div>
     </section>
   </aside>
@@ -195,7 +207,7 @@ select{font:inherit;font-size:14px;background:var(--chip);color:var(--fg);border
   </div>
 
   <div class="panel" id="br"><canvas id="mini" width="340" height="340" aria-label="Overview map. Click to fly to a spot."></canvas><div class="cap">11 × 11 km · north up</div></div>
-  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Roads, trails, names &amp; springs: © OpenStreetMap contributors</div>
+  <div id="credit">Ortofoto: © DGU, DOF 2022 · Terrain, forest &amp; buildings: DGU LiDAR · Cadastre: © DGU · Roads, trails, names &amp; springs: © OpenStreetMap contributors</div>
   <div id="loading">Loading the valley…</div>
 </div>
 
@@ -351,7 +363,7 @@ const PLACES={
   sabljaci:{e:399950,n:5009720,d:2.6,h:-170,p:32,label:["Sabljaci","lake"]},
 };
 const QUAL={light:{k:0.006,fine:4,tree:3,base:0,dR:0,dMax:0},balanced:{k:0.0035,fine:10,tree:6,base:1,dR:380,dMax:6},sharp:{k:0.0022,fine:16,tree:9,base:1,dR:650,dMax:12}};
-const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,springs:true,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
+const st={trails:true,forest:true,bld:true,roads:false,tracks:false,rail:false,water:true,springs:true,kat:false,labels:true,ex:1,q:QUAL.balanced,hour:17.5,month:7};
 
 // ---------------- renderer / scene
 const canvas=$("c");
@@ -360,7 +372,11 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(42,1,0.003,80);
 const controls=new THREE.OrbitControls(camera,canvas);
-controls.enableDamping=true;controls.dampingFactor=0.08;controls.maxPolarAngle=Math.PI*0.495;controls.minDistance=0.03;controls.maxDistance=22;controls.screenSpacePanning=false;
+controls.enableDamping=true;controls.dampingFactor=0.08;
+// map-style controls, as in Google Maps or Mapbox: drag moves the map; right-drag (or Ctrl/Cmd/Shift-drag) turns and tilts;
+// on touch one finger moves, two fingers zoom, turn and tilt
+controls.mouseButtons={LEFT:THREE.MOUSE.PAN,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE};controls.touches={ONE:THREE.TOUCH.PAN,TWO:THREE.TOUCH.DOLLY_ROTATE};
+controls.maxPolarAngle=Math.PI*0.495;controls.minDistance=0.03;controls.maxDistance=22;controls.screenSpacePanning=false;
 const world=new THREE.Group();scene.add(world);
 const sun=new THREE.DirectionalLight(0xffffff,1);scene.add(sun);
 const hemi=new THREE.HemisphereLight(0xdfe9ff,0x5a5040,0.5);scene.add(hemi);
@@ -373,7 +389,7 @@ function prepTex(t){t.anisotropy=maxAniso;t.generateMipmaps=true;t.minFilter=THR
 // orthophoto + own layers: close up, the photo is sharpened and mixed with procedural detail chosen by the
 // LiDAR land cover carried in the vertex colours (forest / water / rock / open ground); far away it is the plain photo
 const ORTHO_GLSL=`
-uniform float uMode,uCont,uLHas,uCHas,uLK,uIsDense;uniform sampler2D uDM;uniform sampler2D uLHo,uLCo,uLH,uLC;uniform vec4 uLB;
+uniform float uMode,uCont,uLHas,uCHas,uLK,uIsDense,uKHas,uKOn;uniform sampler2D uKT;uniform sampler2D uDM;uniform sampler2D uLHo,uLCo,uLH,uLC;uniform vec4 uLB;
 vec3 slopeRamp(float d){vec3 c=vec3(0.97,0.97,0.93);
   c=mix(c,vec3(0.62,0.82,0.52),smoothstep(3.0,10.0,d));c=mix(c,vec3(0.95,0.87,0.30),smoothstep(12.0,18.0,d));
   c=mix(c,vec3(0.95,0.55,0.20),smoothstep(25.0,31.0,d));c=mix(c,vec3(0.84,0.18,0.15),smoothstep(35.0,40.0,d));
@@ -455,10 +471,56 @@ function updateLid(){const m=lidU.mode.value;
   for(const [k,b] of LB)if(!kb.has(k))lidDrop(b);
   for(const k of kb){const [x,y]=k.split("_").map(Number),b=lidBlock(x,y);b.want=1;lidLoad(b,`t/lid/c_${x}_${y}.jpg`,lumTex)}}
 setInterval(updateLid,600);
+// ---------------- cadastral parcels (DGU digital cadastral plan, per cadastral municipality)
+// Loaded per 2 x 2 km block when the layer is on. The km tiles near you get a texture with the boundaries and,
+// where they fit, the parcel numbers; it is painted on the ground like the trails.
+const KOS=[["319228","DREŽNICA",1],["319244","HRELJIN OGULINSKI",0],["319295","JOSIPDOL",0],["319350","POTOK MUSULINSKI",1],["319368","OGULIN",0],["319376","OŠTARIJE",0],["319384","OTOK OŠTARIJSKI",1],["319392","SVETI PETAR",0],["319422","POPOVO SELO",1],["319473","TOUNJ",0],["319511","VITUNJ",0],["319520","ZAGORJE",0],["338494","OGULIN 1",1]];   // code, name, 1 = map harmonised with the survey
+const katU={on:{value:0}},KT=new Map(),KB=new Map(),KAT_PX=PHONE?1024:2048,KAT_MAX=PHONE?6:9;let katSel=null,katVer=0,katRot=0;
+function katTile(tx,ty){const k=tx+"_"+ty;let e=KT.get(k);if(!e){e={tx,ty,tex:{value:emptyTex},has:{value:0},ver:-1,obj:null};KT.set(k,e)}return e}
+function decodeParcel(r){const rings=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(let i=5;i<r.length;i++){const a=r[i],o=new Float32Array(a.length);let x=0,y=0;
+    for(let j=0;j<a.length;j+=2){x+=a[j];y+=a[j+1];const X=x/10,Y=y/10;o[j]=X;o[j+1]=Y;if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y}rings.push(o)}
+  return {n:r[0],a:r[1],ko:r[2],lx:r[3]/10,ly:r[4]/10,rings,bb:[x0,y0,x1,y1],key:r[2]+":"+r[0]}}   // metres east and south of the tile's NW corner
+function katBlock(bx,by){const k=bx+"_"+by;let b=KB.get(k);if(b)return b;b={data:null};KB.set(k,b);
+  fetch(`kat/kb_${bx}_${by}.json`).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const o={};for(const [t,l] of Object.entries(d))o[t]=l.map(decodeParcel);b.data=o}).catch(()=>{});return b}
+function katList(tx,ty){const b=katBlock(tx>>1,ty>>1);return b.data?b.data[tx+"_"+ty]||[]:null}
+function katDraw(e,list){const cv=e.cv||(e.cv=document.createElement("canvas"));cv.width=cv.height=KAT_PX;const cx=cv.getContext("2d"),s=KAT_PX/1000,u=KAT_PX/2048;
+  const path=new Path2D();for(const p of list)for(const r of p.rings){path.moveTo(r[0]*s,r[1]*s);for(let j=2;j<r.length;j+=2)path.lineTo(r[j]*s,r[j+1]*s);path.closePath()}
+  cx.lineJoin="round";cx.strokeStyle="rgba(25,20,0,.55)";cx.lineWidth=3.4*u;cx.stroke(path);cx.strokeStyle="#ffd84a";cx.lineWidth=1.5*u;cx.stroke(path);
+  const sel=list.find(p=>p.key===katSel);
+  if(sel){const sp=new Path2D();for(const r of sel.rings){sp.moveTo(r[0]*s,r[1]*s);for(let j=2;j<r.length;j+=2)sp.lineTo(r[j]*s,r[j+1]*s);sp.closePath()}
+    cx.fillStyle="rgba(80,220,255,.18)";cx.fill(sp,"evenodd");cx.strokeStyle="#5fe0ff";cx.lineWidth=4*u;cx.stroke(sp)}
+  // numbers only where the parcel is clearly bigger than the text
+  cx.font=`700 ${Math.round(13*u)}px "Barlow Semi Condensed","Arial Narrow",sans-serif`;cx.textAlign="center";cx.textBaseline="middle";cx.lineJoin="round";
+  for(const p of list){const tw=cx.measureText(p.n).width,w=(p.bb[2]-p.bb[0])*s,h=(p.bb[3]-p.bb[1])*s;
+    if(w<tw*1.25||h<16*u||Math.sqrt(p.a)*s<tw*1.5)continue;
+    cx.save();cx.translate(p.lx*s,p.ly*s);cx.rotate(katRot*Math.PI/2);
+    cx.lineWidth=3*u;cx.strokeStyle="rgba(0,0,0,.8)";cx.strokeText(p.n,0,0);cx.fillStyle="#fff";cx.fillText(p.n,0,0);cx.restore()}
+  if(!e.obj){e.obj=new THREE.CanvasTexture(cv);e.obj.anisotropy=maxAniso;e.obj.generateMipmaps=true;e.obj.minFilter=THREE.LinearMipmapLinearFilter}else e.obj.needsUpdate=true;
+  e.tex.value=e.obj;e.has.value=1;e.ver=katVer}
+function katDrop(e){if(e.obj){e.obj.dispose();e.obj=null}e.tex.value=emptyTex;e.has.value=0;e.ver=-1}
+function updateKat(){if(!st.kat){KT.forEach(katDrop);return}
+  // numbers are turned (in quarter turns) so they read upright from where you look
+  const q=((Math.round(Math.atan2(controls.target.x-camera.position.x,-(controls.target.z-camera.position.z))/(Math.PI/2))%4)+4)%4;if(q!==katRot){katRot=q;katVer++}
+  const near=new Set(tiles.filter(t=>t.dist<2600).sort((a,b)=>a.dist-b.dist).slice(0,KAT_MAX).map(t=>t.tx+"_"+t.ty));
+  for(const [k,e] of KT)if(!near.has(k)&&e.has.value)katDrop(e);
+  let budget=2;for(const k of near){const [tx,ty]=k.split("_").map(Number),e=katTile(tx,ty);if(e.ver===katVer)continue;const l=katList(tx,ty);if(!l)continue;katDraw(e,l);if(--budget<=0)break}}
+setInterval(updateKat,350);
+// the parcel under a click: even-odd test over all rings, the smallest one wins
+function katAt(E,N){const tx=Math.floor((E-E0)/1000),ty=Math.floor((N1-N)/1000);if(tx<0||ty<0||tx>=NT||ty>=NT)return null;
+  const l=katList(tx,ty);if(!l)return null;const x=E-E0-tx*1000,y=N1-ty*1000-N;let best=null;
+  for(const p of l){if(x<p.bb[0]||x>p.bb[2]||y<p.bb[1]||y>p.bb[3])continue;let inside=false;
+    for(const r of p.rings)for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){const yi=r[i+1],yj=r[j+1];if((yi>y)!==(yj>y)&&x<(r[j]-r[i])*(y-yi)/(yj-yi)+r[i])inside=!inside}
+    if(inside&&(!best||p.a<best.a))best=p}return best}
+function showKat(p){katSel=p?p.key:null;katVer++;const card=$("kc");if(!p){card.hidden=true;return}const ko=KOS[p.ko];
+  $("kc-name").textContent="Parcel "+p.n;$("kc-ko").textContent=ko[1]+" cadastral municipality";
+  $("kc-area").textContent=p.a.toLocaleString("hr-HR")+" m²";$("kc-ref").textContent=ko[0]+"-"+p.n;
+  $("kc-note").textContent=(ko[2]?"":"This municipality's cadastral map is not yet harmonised with the survey, so boundaries can be a few metres off. ")+"DGU digital cadastral plan, updated daily. Not an official extract.";
+  card.hidden=false}
 function orthoMat(tex,tx,ty,isDense){const m=new THREE.MeshLambertMaterial({map:prepTex(tex),vertexColors:true});m.extensions={derivatives:true};
   const lt=tx!=null?lidTile(tx,ty):null,lb=tx!=null?lidBlock(tx>>1,ty>>1):null;
   m.onBeforeCompile=sh=>{m.userData.sh=sh;sh.uniforms.uMode=lidU.mode;sh.uniforms.uCont=lidU.cont;sh.uniforms.uLK=lidU.k;sh.uniforms.uLHo=lidU.ovH;sh.uniforms.uLCo=lidU.ovC;
-    sh.uniforms.uLH=lt?lt.tex:{value:emptyTex};sh.uniforms.uLHas=lt?lt.has:{value:0};sh.uniforms.uDM=denseU.mask;sh.uniforms.uIsDense={value:isDense?1:0};
+    sh.uniforms.uLH=lt?lt.tex:{value:emptyTex};sh.uniforms.uLHas=lt?lt.has:{value:0};const kt=tx!=null?katTile(tx,ty):null;sh.uniforms.uKT=kt?kt.tex:{value:emptyTex};sh.uniforms.uKHas=kt?kt.has:{value:0};sh.uniforms.uKOn=katU.on;sh.uniforms.uDM=denseU.mask;sh.uniforms.uIsDense={value:isDense?1:0};
     sh.uniforms.uLC=lb?lb.tex:{value:emptyTex};sh.uniforms.uCHas=lb?lb.has:{value:0};sh.uniforms.uLB={value:lb?lb.rect:new THREE.Vector4(-5500,-5500,11000,11000)};sh.uniforms.uTexel={value:1/(tex.image&&tex.image.width||1000)};sh.uniforms.uDetail=detailU;
     const tt=tx!=null?trailTexFor(tx,ty):null;sh.uniforms.uTrO=trailU.ov;sh.uniforms.uTrOn=trailU.on;
     sh.uniforms.uTrT={value:tt||emptyTex};sh.uniforms.uHasT={value:tt?1:0};sh.uniforms.uTile={value:new THREE.Vector2(tx!=null?tx*1000-5500:0,ty!=null?ty*1000-5500:0)};
@@ -527,6 +589,9 @@ function orthoMat(tex,tx,ty,isDense){const m=new THREE.MeshLambertMaterial({map:
     float ln=max(l5,max(l25*(1.0-smoothstep(1.5,4.0,fy)),l100));
     c=mix(c,uMode>0.5?vec3(0.42,0.20,0.06):vec3(0.55,0.30,0.10),ln);
   }
+  // cadastral parcel boundaries and numbers, close up only
+  vec2 ku=(vWp-uTile)/1000.0;vec4 kp=texture2D(uKT,vec2(ku.x,1.0-ku.y));
+  c=mix(c,kp.rgb,kp.a*uKHas*uKOn*(1.0-smoothstep(1.6,3.5,pw)));
   // hiking trails painted on the ground, last so they show on every base map: whole-valley mask far away, the tile's sharper mask up close
   vec4 tro=texture2D(uTrO,vec2((vWp.x+5500.0)/11000.0,1.0-(vWp.y+5500.0)/11000.0));
   vec2 tu=(vWp-uTile)/1000.0;vec4 trt=texture2D(uTrT,vec2(tu.x,1.0-tu.y));
@@ -1102,16 +1167,20 @@ canvas.addEventListener("pointermove",ev=>{const now=performance.now();if(now-ho
   const [la,lo]=toLatLon(E,N);$("r-coord").textContent=`${la.toFixed(5)}° N  ${lo.toFixed(5)}° E`;});
 // click on a red trail for its details
 // taps are detected from pointer events: on phones the orbit controls cancel the browser's synthetic click
-let tap=null,downN=0;
-canvas.addEventListener("pointerdown",ev=>{downN++;tap=downN===1?{x:ev.clientX,y:ev.clientY,t:performance.now(),touch:ev.pointerType!=="mouse"}:null});
-const endPtr=()=>{downN=Math.max(0,downN-1)};
-canvas.addEventListener("pointercancel",()=>{endPtr();tap=null});
-canvas.addEventListener("pointerup",ev=>{endPtr();const t=tap;tap=null;
-  if(!t||!TRAILS||!st.trails)return;const slop=t.touch?12:5;
+// pointers are tracked by id on the whole window: a press that starts on the map and ends over a panel or a label
+// must not leave a finger "down" forever (that blocked every later click)
+let tap=null;const downIds=new Set();
+canvas.addEventListener("pointerdown",ev=>{downIds.add(ev.pointerId);tap=downIds.size===1?{x:ev.clientX,y:ev.clientY,t:performance.now(),touch:ev.pointerType!=="mouse",id:ev.pointerId}:null});
+addEventListener("pointerup",ev=>{downIds.delete(ev.pointerId);if(ev.target!==canvas&&tap&&tap.id===ev.pointerId)tap=null},true);
+addEventListener("pointercancel",ev=>{downIds.delete(ev.pointerId);tap=null},true);
+addEventListener("blur",()=>{downIds.clear();tap=null});
+canvas.addEventListener("pointerup",ev=>{const t=tap;tap=null;if(t&&t.id!==ev.pointerId)return;
+  if(!t||!((TRAILS&&st.trails)||st.kat))return;const slop=t.touch?12:5;
   if(Math.hypot(ev.clientX-t.x,ev.clientY-t.y)>slop||performance.now()-t.t>(t.touch?600:1500))return;
   const h=pick(ev);if(!h)return;
   const E=E0+(h.point.x+HALF)*1000,N=N1-(h.point.z+HALF)*1000;const tol=Math.max(t.touch?10:5,camera.position.distanceTo(h.point)*1000*(t.touch?0.035:0.018));
-  const ti=nearestTrail(E,N,tol);if(ti>=0)showTrail(ti);else if(trailSel>=0)showTrail(-1)});
+  const ti=TRAILS&&st.trails?nearestTrail(E,N,tol):-1;if(ti>=0){showKat(null);showTrail(ti);return}
+  const kp=st.kat?katAt(E,N):null;if(trailSel>=0)showTrail(-1);showKat(kp)});
 canvas.addEventListener("dblclick",ev=>{const h=pick(ev);if(!h)return;const d=Math.max(0.08,camera.position.distanceTo(h.point)*0.45);
   const dir=camera.position.clone().sub(controls.target).normalize();flyTo({tgt:h.point.clone(),cam:h.point.clone().add(dir.multiplyScalar(d))},900)});
 
@@ -1138,7 +1207,8 @@ const tog=(id,key,fn)=>$(id).addEventListener("change",e=>{st[key]=e.target.chec
 let staleId=0;const rebuildAll=()=>{staleId=jobId;dropAllDense();uploads.length=0;if(baseMesh){world.remove(baseMesh);baseMesh.geometry.dispose();baseMesh=null;buildBase()}tiles.forEach(t=>{t.lod=-2;t.failed=0;t.pendingLod=undefined});lastWants=0};
 tog("l-forest","forest",rebuildAll);tog("l-water","water",rebuildAll);
 tog("l-bld","bld",()=>{if(bMesh)bMesh.visible=st.bld;if(monuments)monuments.visible=st.bld});tog("l-roads","roads",buildRoads);tog("l-tracks","tracks",buildRoads);tog("l-rail","rail",buildRoads);
-tog("l-labels","labels",placeLabels);tog("l-springs","springs",placePois);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
+tog("l-labels","labels",placeLabels);tog("l-springs","springs",placePois);tog("l-kat","kat",()=>{katU.on.value=st.kat?1:0;if(!st.kat)showKat(null);updateKat()});
+$("kc-x").onclick=()=>showKat(null);tog("l-trails","trails",()=>{if(!st.trails)$("tc").hidden=true;buildTrails();placePois()});
 $("tc-x").onclick=()=>showTrail(-1);
 $("l-detail").addEventListener("change",e=>{detailU.value=e.target.checked?1:0});
 // base map: LiDAR views switch the trees off so the ground itself is shown; the photo view puts them back as they were
@@ -1176,10 +1246,17 @@ Promise.all([new Promise(res=>texLoader.load("t/o0.jpg",t=>{ovMat=orthoMat(t);re
   $("loading").hidden=true;
 }).catch(e=>{$("loading").textContent="The landscape data did not load ("+e.message+"). Reload the page to try again."});
 
+const lastTgt=new THREE.Vector3();
 (function loop(now){requestAnimationFrame(loop);
   if(flight){const t=Math.min(1,(now-flight.t0)/flight.ms),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
     camera.position.lerpVectors(flight.c0,flight.c1,e);controls.target.lerpVectors(flight.g0,flight.g1,e);if(t>=1)flight=null}
   controls.update();
+  if(!flight&&L0){
+    // while the map is being moved, the point you turn around follows the ground (not while only turning or zooming)
+    const tg=controls.target,moved=Math.hypot(tg.x-lastTgt.x,tg.z-lastTgt.z)>1e-6;lastTgt.copy(tg);
+    if(moved){const dy=groundY(tg.x,tg.z)-tg.y;if(Math.abs(dy)>0.0003){const k=Math.min(1,0.25+Math.abs(dy)*2);tg.y+=dy*k;camera.position.y+=dy*k}}
+    const cg=groundY(camera.position.x,camera.position.z)+0.004*st.ex;if(camera.position.y<cg)camera.position.y=cg;   // never below the ground
+  }
   const d=camera.position.distanceTo(controls.target);scene.fog.near=d*2+1.5;scene.fog.far=d*5+10;camera.near=Math.max(0.0008,d*0.01);camera.updateProjectionMatrix();
   scheduleDense();schedule(now);applyUpload();
   if(roadsDirty&&now-lastRoads>2500&&!uploads.length){lastRoads=now;buildRoads();trailsDirty=true}
